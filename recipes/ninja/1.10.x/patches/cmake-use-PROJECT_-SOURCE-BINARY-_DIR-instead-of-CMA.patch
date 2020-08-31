@@ -1,0 +1,36 @@
+From fe4ee62b8aa7110406fd0c978b22e46b106bf448 Mon Sep 17 00:00:00 2001
+From: David Callu <callu.david@gmail.com>
+Date: Thu, 16 Jul 2020 14:06:20 +0200
+Subject: [PATCH] cmake: use PROJECT_{SOURCE,BINARY}_DIR instead of
+ CMAKE_{SOURCE,BINARY}_DIR
+
+CMAKE_SOURCE_DIR refer to the full path to the top level of the current
+CMake source tree
+PROJECT_SOURCE_DIR refer to the source directory of the last call to the
+project() command made in the current directory scope or one of its parents
+
+when ninja is use as a subproject, the build fail because of this.
+---
+ CMakeLists.txt | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 007c662..65e42a4 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -32,9 +32,9 @@ if(RE2C)
+ 			COMMAND ${RE2C} -b -i --no-generation-date -o ${OUT} ${IN}
+ 		)
+ 	endfunction()
+-	re2c(${CMAKE_SOURCE_DIR}/src/depfile_parser.in.cc ${CMAKE_BINARY_DIR}/depfile_parser.cc)
+-	re2c(${CMAKE_SOURCE_DIR}/src/lexer.in.cc ${CMAKE_BINARY_DIR}/lexer.cc)
+-	add_library(libninja-re2c OBJECT ${CMAKE_BINARY_DIR}/depfile_parser.cc ${CMAKE_BINARY_DIR}/lexer.cc)
++	re2c(${PROJECT_SOURCE_DIR}/src/depfile_parser.in.cc ${PROJECT_BINARY_DIR}/depfile_parser.cc)
++	re2c(${PROJECT_SOURCE_DIR}/src/lexer.in.cc ${PROJECT_BINARY_DIR}/lexer.cc)
++	add_library(libninja-re2c OBJECT ${PROJECT_BINARY_DIR}/depfile_parser.cc ${PROJECT_BINARY_DIR}/lexer.cc)
+ else()
+ 	message(WARNING "re2c was not found; changes to src/*.in.cc will not affect your build.")
+ 	add_library(libninja-re2c OBJECT src/depfile_parser.cc src/lexer.cc)
+-- 
+2.20.1
+
