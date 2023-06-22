@@ -1,0 +1,1083 @@
+diff --color -Naur a/CMakeLists.txt b/CMakeLists.txt
+--- a/CMakeLists.txt	1970-01-01 01:00:00.000000000 +0100
++++ b/CMakeLists.txt	2023-06-26 09:35:24.059951911 +0200
+@@ -0,0 +1,121 @@
++cmake_minimum_required(VERSION 3.15)
++
++project(Qwt
++  VERSION 6.1.6
++  DESCRIPTION "Qt Widgets for Technical Applications"
++  HOMEPAGE_URL "https://qwt.sourceforge.io"
++  LANGUAGES CXX
++)
++
++set(CMAKE_CXX_STANDARD 11)
++set(CMAKE_CXX_STANDARD_REQUIRED TRUE)
++set(CMAKE_CXX_EXTENSIONS OFF)
++
++if(MSVC)
++  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /W4 /permissive-")
++else()
++  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -Wpedantic -Wcast-qual \
++    -Wcast-align -Wredundant-decls -Wformat -Wshadow -Woverloaded-virtual \
++    -fno-math-errno -funsafe-math-optimizations")
++  if(CMAKE_COMPILER_ID STREQUAL "GNU")
++    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wlogical-op")
++  endif()
++  add_compile_definitions(QT_STRICT_ITERATORS)
++endif()
++
++include(CheckPIESupported)
++check_pie_supported(OUTPUT_VARIABLE PIE_MESSAGE LANGUAGES CXX)
++if(CMAKE_CXX_LINK_PIE_SUPPORTED)
++  set(CMAKE_POSITION_INDEPENDENT_CODE TRUE)
++endif()
++
++include(GNUInstallDirs)
++
++set(QWT_NAME_SUFFIX "" CACHE STRING "Qwt Name Suffix")
++
++set(QWT_QT_VERSION_MAJOR "A" CACHE
++  STRING "Expected Qt major version. Valid values are A (auto-select), 5, 6.")
++set(SUPPORTED_QT_VERSIONS "A" 5 6)
++set_property(CACHE QWT_QT_VERSION_MAJOR PROPERTY STRINGS ${SUPPORTED_QT_VERSIONS})
++if(NOT QWT_QT_VERSION_MAJOR STREQUAL "A")
++  if(NOT QWT_QT_VERSION_MAJOR IN_LIST SUPPORTED_QT_VERSIONS)
++    message(FATAL_ERROR "Supported Qt versions are \"${SUPPORTED_QT_VERSIONS}\"."
++            " But QWT_QT_VERSION_MAJOR is set to ${QWT_QT_VERSION_MAJOR}.")
++  endif()
++endif()
++
++option(QWT_DLL "Build shared library" ON)
++
++option(QWT_STATIC "Build static library" OFF)
++
++if(NOT (QWT_DLL OR QWT_STATIC))
++  message(FATAL_ERROR "QWT_DLL and QWT_STATIC are both set to OFF")
++endif()
++
++option(QWT_PLOT "Enable QwtPlot widget" ON)
++
++option(QWT_WIDGETS "Enables other widgets (sliders, dials, ...), beside QwtPlot" ON)
++
++option(QWT_SVG "Enable SVG Support (Displaying & Exporting)" ON)
++
++option(QWT_OPENGL "Enable OpenGL Plot Canvas" ON)
++
++option(QWT_DESIGNER "Build Qwt Designer plugin" ON)
++
++if(WIN32)
++  option(QWT_DESIGNER_SELF_CONTAINED "Build a self-contained designer plugin" ON)
++endif()
++
++if(APPLE)
++  option(QWT_FRAMEWORK "Build Qwt as a framework" ON)
++endif()
++
++option(QWT_BUILD_PLAYGROUND "Build the applications in playground" OFF)
++
++option(QWT_BUILD_TESTS "Build Tests" OFF)
++
++option(QWT_BUILD_EXAMPLES "Build Examples" OFF)
++
++if(QWT_QT_VERSION_MAJOR STREQUAL "A")
++  find_package(Qt6 COMPONENTS Core QUIET)
++  if(Qt6_FOUND)
++    set(QT_VERSION ${Qt6_VERSION})
++    set(QT_VERSION_MAJOR 6)
++  else()
++    find_package(Qt5 COMPONENTS Core REQUIRED)
++    set(QT_VERSION ${Qt5_VERSION})
++    set(QT_VERSION_MAJOR 5)
++  endif()
++else()
++  find_package(Qt${QWT_QT_VERSION_MAJOR} COMPONENTS Core REQUIRED)
++  set(QT_VERSION ${Qt${QWT_QT_VERSION_MAJOR}_VERSION})
++  set(QT_VERSION_MAJOR ${QWT_QT_VERSION_MAJOR})
++endif()
++
++find_package(Qt${QT_VERSION_MAJOR} COMPONENTS PrintSupport Concurrent Widgets REQUIRED)
++
++if(QWT_OPENGL)
++  find_package(Qt${QT_VERSION_MAJOR} COMPONENTS OpenGL REQUIRED)
++  if(QT_VERSION_MAJOR VERSION_GREATER_EQUAL 6)
++    find_package(Qt${QT_VERSION_MAJOR} COMPONENTS OpenGLWidgets REQUIRED)
++  endif()
++endif()
++
++if(QWT_SVG)
++  find_package(Qt${QT_VERSION_MAJOR} COMPONENTS Svg REQUIRED)
++endif()
++
++add_subdirectory(src)
++
++if(QWT_DESIGNER)
++  find_package(Qt${QT_VERSION_MAJOR} COMPONENTS Designer)
++  add_subdirectory(designer)
++endif()
++
++if(QWT_BUILD_PLAYGROUND)
++  add_subdirectory(playground)
++endif()
++
++if(QWT_BUILD_EXAMPLES)
++  add_subdirectory(examples)
++endif()
+diff --color -Naur a/designer/CMakeLists.txt b/designer/CMakeLists.txt
+--- a/designer/CMakeLists.txt	1970-01-01 01:00:00.000000000 +0100
++++ b/designer/CMakeLists.txt	2023-06-26 09:35:24.059951911 +0200
+@@ -0,0 +1,35 @@
++if(QWT_DESIGNER_SELF_CONTAINED)
++  add_library(qwt_designer_plugin SHARED
++    qwt_designer_plugin.cpp
++    qwt_designer_plugin.qrc
++    $<TARGET_OBJECTS:qwt_objects>
++  )
++  target_link_libraries(qwt_designer_plugin PRIVATE qwt_objects)
++  target_compile_definitions(qwt_designer_plugin PRIVATE
++    QWT_MAKEDLL
++    QT_NO_KEYWORDS
++    QWT_MOC_INCLUDE
++  )
++else()
++  add_library(qwt_designer_plugin SHARED
++    qwt_designer_plugin.cpp
++    qwt_designer_plugin.qrc
++  )
++  target_link_libraries(qwt_designer_plugin PRIVATE qwt)
++endif()
++
++target_link_libraries(qwt_designer_plugin PUBLIC Qt${QT_VERSION_MAJOR}::Designer)
++
++set_target_properties(qwt_designer_plugin PROPERTIES
++  AUTOMOC ON
++  AUTORCC ON
++)
++
++if(MINGW)
++  set_target_properties(qwt_designer_plugin PROPERTIES PREFIX "")
++endif()
++
++install(TARGETS qwt_designer_plugin
++  RUNTIME DESTINATION ${CMAKE_INSTALL_DATADIR}/qt${QT_VERSION_MAJOR}/plugins/designer
++  LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}/qt${QT_VERSION_MAJOR}/plugins/designer
++)
+diff --color -Naur a/examples/animation/CMakeLists.txt b/examples/animation/CMakeLists.txt
+--- a/examples/animation/CMakeLists.txt	1970-01-01 01:00:00.000000000 +0100
++++ b/examples/animation/CMakeLists.txt	2023-06-26 09:35:24.059951911 +0200
+@@ -0,0 +1,8 @@
++
++add_executable(animation
++  main.cpp
++  plot.cpp
++  plot.h
++)
++
++target_link_libraries(animation qwt)
+diff --color -Naur a/examples/barchart/CMakeLists.txt b/examples/barchart/CMakeLists.txt
+--- a/examples/barchart/CMakeLists.txt	1970-01-01 01:00:00.000000000 +0100
++++ b/examples/barchart/CMakeLists.txt	2023-06-26 09:35:24.059951911 +0200
+@@ -0,0 +1,8 @@
++
++add_executable(barchart
++  main.cpp
++  barchart.cpp
++  barchart.h
++)
++
++target_link_libraries(barchart qwt)
+diff --color -Naur a/examples/bode/CMakeLists.txt b/examples/bode/CMakeLists.txt
+--- a/examples/bode/CMakeLists.txt	1970-01-01 01:00:00.000000000 +0100
++++ b/examples/bode/CMakeLists.txt	2023-06-26 09:35:24.059951911 +0200
+@@ -0,0 +1,11 @@
++
++add_executable(bode
++  main.cpp
++  mainwindow.cpp
++  mainwindow.h
++  pixmaps.h
++  plot.cpp
++  plot.h
++)
++
++target_link_libraries(bode qwt)
+diff --color -Naur a/examples/CMakeLists.txt b/examples/CMakeLists.txt
+--- a/examples/CMakeLists.txt	1970-01-01 01:00:00.000000000 +0100
++++ b/examples/CMakeLists.txt	2023-06-26 09:35:37.787930095 +0200
+@@ -0,0 +1,36 @@
++
++set(CMAKE_AUTOMOC ON)
++
++if(QWT_PLOT)
++  add_subdirectory(animation)
++  add_subdirectory(barchart)
++
++  add_subdirectory(cpuplot)
++  add_subdirectory(curvdemo1)
++  add_subdirectory(distrowatch)
++  add_subdirectory(friedberg)
++  add_subdirectory(itemeditor)
++  add_subdirectory(legends)
++  add_subdirectory(stockchart)
++  add_subdirectory(simpleplot)
++  add_subdirectory(sinusplot)
++  add_subdirectory(realtime)
++  add_subdirectory(refreshtest)
++  add_subdirectory(scatterplot)
++  add_subdirectory(spectrogram)
++  add_subdirectory(rasterview)
++  add_subdirectory(tvplot)
++
++  if(QWT_WIDGETS)
++    add_subdirectory(bode)
++    add_subdirectory(oscilloscope)
++  endif()
++
++endif()
++
++if(QWT_WIDGETS)
++  add_subdirectory(sysinfo)
++  add_subdirectory(radio)
++  add_subdirectory(dials)
++  add_subdirectory(controls)
++endif()
+diff --color -Naur a/examples/controls/CMakeLists.txt b/examples/controls/CMakeLists.txt
+--- a/examples/controls/CMakeLists.txt	1970-01-01 01:00:00.000000000 +0100
++++ b/examples/controls/CMakeLists.txt	2023-06-26 09:35:24.059951911 +0200
+@@ -0,0 +1,22 @@
++
++add_executable(controls
++  main.cpp
++  sliderbox.h
++  slidertab.h
++  wheelbox.h
++  wheeltab.h
++  knobbox.h
++  knobtab.h
++  dialbox.h
++  dialtab.h
++  sliderbox.cpp
++  slidertab.cpp
++  wheelbox.cpp
++  wheeltab.cpp
++  knobbox.cpp
++  knobtab.cpp
++  dialbox.cpp
++  dialtab.cpp
++)
++
++target_link_libraries(controls qwt)
+diff --color -Naur a/examples/cpuplot/CMakeLists.txt b/examples/cpuplot/CMakeLists.txt
+--- a/examples/cpuplot/CMakeLists.txt	1970-01-01 01:00:00.000000000 +0100
++++ b/examples/cpuplot/CMakeLists.txt	2023-06-26 09:35:24.059951911 +0200
+@@ -0,0 +1,11 @@
++
++add_executable(cpuplot
++  cpupiemarker.cpp
++  cpupiemarker.h
++  cpuplot.cpp
++  cpuplot.h
++  cpustat.cpp
++  cpustat.h
++)
++
++target_link_libraries(cpuplot qwt)
+diff --color -Naur a/examples/curvdemo1/CMakeLists.txt b/examples/curvdemo1/CMakeLists.txt
+--- a/examples/curvdemo1/CMakeLists.txt	1970-01-01 01:00:00.000000000 +0100
++++ b/examples/curvdemo1/CMakeLists.txt	2023-06-26 09:35:24.059951911 +0200
+@@ -0,0 +1,4 @@
++
++add_executable(curvdemo1 curvdemo1.cpp)
++
++target_link_libraries(curvdemo1 qwt)
+diff --color -Naur a/examples/dials/CMakeLists.txt b/examples/dials/CMakeLists.txt
+--- a/examples/dials/CMakeLists.txt	1970-01-01 01:00:00.000000000 +0100
++++ b/examples/dials/CMakeLists.txt	2023-06-26 09:35:24.059951911 +0200
+@@ -0,0 +1,14 @@
++
++add_executable(dials
++  attitude_indicator.h
++  speedo_meter.h
++  cockpit_grid.h
++  compass_grid.h
++  attitude_indicator.cpp
++  dials.cpp
++  speedo_meter.cpp
++  cockpit_grid.cpp
++  compass_grid.cpp
++)
++
++target_link_libraries(dials qwt)
+diff --color -Naur a/examples/distrowatch/CMakeLists.txt b/examples/distrowatch/CMakeLists.txt
+--- a/examples/distrowatch/CMakeLists.txt	1970-01-01 01:00:00.000000000 +0100
++++ b/examples/distrowatch/CMakeLists.txt	2023-06-26 09:35:24.059951911 +0200
+@@ -0,0 +1,8 @@
++
++add_executable(distrowatch
++  main.cpp
++  barchart.cpp
++  barchart.h
++)
++
++target_link_libraries(distrowatch qwt)
+diff --color -Naur a/examples/friedberg/CMakeLists.txt b/examples/friedberg/CMakeLists.txt
+--- a/examples/friedberg/CMakeLists.txt	1970-01-01 01:00:00.000000000 +0100
++++ b/examples/friedberg/CMakeLists.txt	2023-06-26 09:35:24.059951911 +0200
+@@ -0,0 +1,10 @@
++
++add_executable(friedberg
++  main.cpp
++  friedberg2007.h
++  friedberg2007.cpp
++  plot.h
++  plot.cpp
++)
++
++target_link_libraries(friedberg qwt)
+diff --color -Naur a/examples/itemeditor/CMakeLists.txt b/examples/itemeditor/CMakeLists.txt
+--- a/examples/itemeditor/CMakeLists.txt	1970-01-01 01:00:00.000000000 +0100
++++ b/examples/itemeditor/CMakeLists.txt	2023-06-26 09:35:24.059951911 +0200
+@@ -0,0 +1,12 @@
++
++add_executable(itemeditor
++  main.cpp
++  editor.h
++  shapefactory.h
++  plot.h
++  editor.cpp
++  shapefactory.cpp
++  plot.cpp
++)
++
++target_link_libraries(itemeditor qwt)
+diff --color -Naur a/examples/legends/CMakeLists.txt b/examples/legends/CMakeLists.txt
+--- a/examples/legends/CMakeLists.txt	1970-01-01 01:00:00.000000000 +0100
++++ b/examples/legends/CMakeLists.txt	2023-06-26 09:35:24.059951911 +0200
+@@ -0,0 +1,13 @@
++
++add_executable(legends
++  main.cpp
++  mainwindow.h
++  panel.h
++  settings.h
++  plot.h
++  mainwindow.cpp
++  panel.cpp
++  plot.cpp
++)
++
++target_link_libraries(legends qwt)
+diff --color -Naur a/examples/oscilloscope/CMakeLists.txt b/examples/oscilloscope/CMakeLists.txt
+--- a/examples/oscilloscope/CMakeLists.txt	1970-01-01 01:00:00.000000000 +0100
++++ b/examples/oscilloscope/CMakeLists.txt	2023-06-26 09:35:24.059951911 +0200
+@@ -0,0 +1,20 @@
++
++add_executable(oscilloscope
++  main.cpp
++  curvedata.h
++  signaldata.h
++  plot.h
++  knob.h
++  wheelbox.h
++  samplingthread.h
++  mainwindow.h
++  curvedata.cpp
++  signaldata.cpp
++  plot.cpp
++  knob.cpp
++  wheelbox.cpp
++  samplingthread.cpp
++  mainwindow.cpp
++)
++
++target_link_libraries(oscilloscope qwt)
+diff --color -Naur a/examples/radio/CMakeLists.txt b/examples/radio/CMakeLists.txt
+--- a/examples/radio/CMakeLists.txt	1970-01-01 01:00:00.000000000 +0100
++++ b/examples/radio/CMakeLists.txt	2023-06-26 09:35:24.059951911 +0200
+@@ -0,0 +1,12 @@
++
++add_executable(radio
++  ampfrm.h
++  mainwindow.h
++  tunerfrm.h
++  ampfrm.cpp
++  mainwindow.cpp
++  radio.cpp
++  tunerfrm.cpp
++)
++
++target_link_libraries(radio qwt)
+diff --color -Naur a/examples/rasterview/CMakeLists.txt b/examples/rasterview/CMakeLists.txt
+--- a/examples/rasterview/CMakeLists.txt	1970-01-01 01:00:00.000000000 +0100
++++ b/examples/rasterview/CMakeLists.txt	2023-06-26 09:35:24.059951911 +0200
+@@ -0,0 +1,8 @@
++
++add_executable(rasterview
++  main.cpp
++  plot.h
++  plot.cpp
++)
++
++target_link_libraries(rasterview qwt)
+diff --color -Naur a/examples/realtime/CMakeLists.txt b/examples/realtime/CMakeLists.txt
+--- a/examples/realtime/CMakeLists.txt	1970-01-01 01:00:00.000000000 +0100
++++ b/examples/realtime/CMakeLists.txt	2023-06-26 09:35:24.059951911 +0200
+@@ -0,0 +1,16 @@
++
++add_executable(realtime
++  main.cpp
++  scrollzoomer.h
++  scrollbar.h
++  incrementalplot.h
++  randomplot.h
++  mainwindow.h
++  scrollzoomer.cpp
++  scrollbar.cpp
++  incrementalplot.cpp
++  randomplot.cpp
++  mainwindow.cpp
++)
++
++target_link_libraries(realtime qwt)
+diff --color -Naur a/examples/refreshtest/CMakeLists.txt b/examples/refreshtest/CMakeLists.txt
+--- a/examples/refreshtest/CMakeLists.txt	1970-01-01 01:00:00.000000000 +0100
++++ b/examples/refreshtest/CMakeLists.txt	2023-06-26 09:35:24.059951911 +0200
+@@ -0,0 +1,15 @@
++
++add_executable(refreshtest
++  main.cpp
++  settings.h
++  circularbuffer.h
++  panel.h
++  plot.h
++  mainwindow.h
++  circularbuffer.cpp
++  panel.cpp
++  plot.cpp
++  mainwindow.cpp
++)
++
++target_link_libraries(refreshtest qwt)
+diff --color -Naur a/examples/scatterplot/CMakeLists.txt b/examples/scatterplot/CMakeLists.txt
+--- a/examples/scatterplot/CMakeLists.txt	1970-01-01 01:00:00.000000000 +0100
++++ b/examples/scatterplot/CMakeLists.txt	2023-06-26 09:35:24.059951911 +0200
+@@ -0,0 +1,10 @@
++
++add_executable(scatterplot
++  main.cpp
++  mainwindow.h
++  mainwindow.cpp
++  plot.h
++  plot.cpp
++)
++
++target_link_libraries(scatterplot qwt)
+diff --color -Naur a/examples/simpleplot/CMakeLists.txt b/examples/simpleplot/CMakeLists.txt
+--- a/examples/simpleplot/CMakeLists.txt	1970-01-01 01:00:00.000000000 +0100
++++ b/examples/simpleplot/CMakeLists.txt	2023-06-26 09:35:24.059951911 +0200
+@@ -0,0 +1,4 @@
++
++add_executable(simpleplot simpleplot.cpp)
++
++target_link_libraries(simpleplot qwt)
+diff --color -Naur a/examples/sinusplot/CMakeLists.txt b/examples/sinusplot/CMakeLists.txt
+--- a/examples/sinusplot/CMakeLists.txt	1970-01-01 01:00:00.000000000 +0100
++++ b/examples/sinusplot/CMakeLists.txt	2023-06-26 09:35:24.059951911 +0200
+@@ -0,0 +1,4 @@
++
++add_executable(sinusplot sinusplot.cpp)
++
++target_link_libraries(sinusplot qwt)
+diff --color -Naur a/examples/spectrogram/CMakeLists.txt b/examples/spectrogram/CMakeLists.txt
+--- a/examples/spectrogram/CMakeLists.txt	1970-01-01 01:00:00.000000000 +0100
++++ b/examples/spectrogram/CMakeLists.txt	2023-06-26 09:35:24.059951911 +0200
+@@ -0,0 +1,8 @@
++
++add_executable(spectrogram
++  main.cpp
++  plot.h
++  plot.cpp
++)
++
++target_link_libraries(spectrogram qwt)
+diff --color -Naur a/examples/stockchart/CMakeLists.txt b/examples/stockchart/CMakeLists.txt
+--- a/examples/stockchart/CMakeLists.txt	1970-01-01 01:00:00.000000000 +0100
++++ b/examples/stockchart/CMakeLists.txt	2023-06-26 09:35:24.059951911 +0200
+@@ -0,0 +1,14 @@
++
++add_executable(stockchart
++  main.cpp
++  legend.h
++  griditem.h
++  plot.h
++  quotefactory.h
++  legend.cpp
++  griditem.cpp
++  plot.cpp
++  quotefactory.cpp
++)
++
++target_link_libraries(stockchart qwt)
+diff --color -Naur a/examples/sysinfo/CMakeLists.txt b/examples/sysinfo/CMakeLists.txt
+--- a/examples/sysinfo/CMakeLists.txt	1970-01-01 01:00:00.000000000 +0100
++++ b/examples/sysinfo/CMakeLists.txt	2023-06-26 09:35:24.059951911 +0200
+@@ -0,0 +1,4 @@
++
++add_executable(sysinfo sysinfo.cpp)
++
++target_link_libraries(sysinfo qwt)
+diff --color -Naur a/examples/tvplot/CMakeLists.txt b/examples/tvplot/CMakeLists.txt
+--- a/examples/tvplot/CMakeLists.txt	1970-01-01 01:00:00.000000000 +0100
++++ b/examples/tvplot/CMakeLists.txt	2023-06-26 09:35:24.063951904 +0200
+@@ -0,0 +1,8 @@
++
++add_executable(tvplot
++  main.cpp
++  tvplot.h
++  tvplot.cpp
++)
++
++target_link_libraries(tvplot qwt)
+diff --color -Naur a/playground/CMakeLists.txt b/playground/CMakeLists.txt
+--- a/playground/CMakeLists.txt	1970-01-01 01:00:00.000000000 +0100
++++ b/playground/CMakeLists.txt	2023-06-26 09:35:24.063951904 +0200
+@@ -0,0 +1,18 @@
++
++set(CMAKE_AUTOMOC ON)
++
++if(QWT_PLOT)
++  add_subdirectory(plotmatrix)
++  add_subdirectory(timescale)
++  add_subdirectory(scaleengine)
++  add_subdirectory(rescaler)
++  add_subdirectory(shapes)
++  add_subdirectory(curvetracker)
++  add_subdirectory(symbols)
++
++  if(QWT_SVG)
++    add_subdirectory(svgmap)
++    add_subdirectory(graphicscale)
++  endif()
++
++endif()
+diff --color -Naur a/playground/curvetracker/CMakeLists.txt b/playground/curvetracker/CMakeLists.txt
+--- a/playground/curvetracker/CMakeLists.txt	1970-01-01 01:00:00.000000000 +0100
++++ b/playground/curvetracker/CMakeLists.txt	2023-06-26 09:35:24.063951904 +0200
+@@ -0,0 +1,10 @@
++
++add_executable(curvetracker
++  main.cpp
++  curvetracker.cpp
++  curvetracker.h
++  plot.cpp
++  plot.h
++)
++
++target_link_libraries(curvetracker qwt)
+diff --color -Naur a/playground/graphicscale/CMakeLists.txt b/playground/graphicscale/CMakeLists.txt
+--- a/playground/graphicscale/CMakeLists.txt	1970-01-01 01:00:00.000000000 +0100
++++ b/playground/graphicscale/CMakeLists.txt	2023-06-26 09:35:24.063951904 +0200
+@@ -0,0 +1,10 @@
++
++add_executable(graphicscale
++  main.cpp
++  canvas.cpp
++  canvas.h
++  mainwindow.cpp
++  mainwindow.h
++)
++
++target_link_libraries(graphicscale qwt)
+diff --color -Naur a/playground/plotmatrix/CMakeLists.txt b/playground/plotmatrix/CMakeLists.txt
+--- a/playground/plotmatrix/CMakeLists.txt	1970-01-01 01:00:00.000000000 +0100
++++ b/playground/plotmatrix/CMakeLists.txt	2023-06-26 09:35:24.063951904 +0200
+@@ -0,0 +1,8 @@
++
++add_executable(plotmatrix
++  main.cpp
++  plotmatrix.cpp
++  plotmatrix.h
++)
++
++target_link_libraries(plotmatrix qwt)
+diff --color -Naur a/playground/rescaler/CMakeLists.txt b/playground/rescaler/CMakeLists.txt
+--- a/playground/rescaler/CMakeLists.txt	1970-01-01 01:00:00.000000000 +0100
++++ b/playground/rescaler/CMakeLists.txt	2023-06-26 09:35:24.063951904 +0200
+@@ -0,0 +1,10 @@
++
++add_executable(rescaler
++  main.cpp
++  mainwindow.cpp
++  mainwindow.h
++  plot.cpp
++  plot.h
++)
++
++target_link_libraries(rescaler qwt)
+diff --color -Naur a/playground/scaleengine/CMakeLists.txt b/playground/scaleengine/CMakeLists.txt
+--- a/playground/scaleengine/CMakeLists.txt	1970-01-01 01:00:00.000000000 +0100
++++ b/playground/scaleengine/CMakeLists.txt	2023-06-26 09:35:24.063951904 +0200
+@@ -0,0 +1,12 @@
++
++add_executable(scaleengine
++  mainwindow.cpp
++  mainwindow.h
++  plot.cpp
++  plot.h
++  scaleengine.cpp
++  transformplot.cpp
++  transformplot.h
++)
++
++target_link_libraries(scaleengine qwt)
+diff --color -Naur a/playground/shapes/CMakeLists.txt b/playground/shapes/CMakeLists.txt
+--- a/playground/shapes/CMakeLists.txt	1970-01-01 01:00:00.000000000 +0100
++++ b/playground/shapes/CMakeLists.txt	2023-06-26 09:35:24.063951904 +0200
+@@ -0,0 +1,4 @@
++
++add_executable(shapes shapes.cpp)
++
++target_link_libraries(shapes qwt)
+diff --color -Naur a/playground/svgmap/CMakeLists.txt b/playground/svgmap/CMakeLists.txt
+--- a/playground/svgmap/CMakeLists.txt	1970-01-01 01:00:00.000000000 +0100
++++ b/playground/svgmap/CMakeLists.txt	2023-06-26 09:35:24.063951904 +0200
+@@ -0,0 +1,8 @@
++
++add_executable(svgmap
++  main.cpp
++  plot.cpp
++  plot.h
++)
++
++target_link_libraries(svgmap qwt)
+diff --color -Naur a/playground/symbols/CMakeLists.txt b/playground/symbols/CMakeLists.txt
+--- a/playground/symbols/CMakeLists.txt	1970-01-01 01:00:00.000000000 +0100
++++ b/playground/symbols/CMakeLists.txt	2023-06-26 09:35:24.063951904 +0200
+@@ -0,0 +1,4 @@
++
++add_executable(symbols symbols.cpp)
++
++target_link_libraries(symbols qwt)
+diff --color -Naur a/playground/timescale/CMakeLists.txt b/playground/timescale/CMakeLists.txt
+--- a/playground/timescale/CMakeLists.txt	1970-01-01 01:00:00.000000000 +0100
++++ b/playground/timescale/CMakeLists.txt	2023-06-26 09:35:24.063951904 +0200
+@@ -0,0 +1,13 @@
++
++add_executable(timescale
++  main.cpp
++  mainwindow.cpp
++  mainwindow.h
++  panel.cpp
++  panel.h
++  plot.cpp
++  plot.h
++  settings.h
++)
++
++target_link_libraries(timescale qwt)
+diff --color -Naur a/src/CMakeLists.txt b/src/CMakeLists.txt
+--- a/src/CMakeLists.txt	1970-01-01 01:00:00.000000000 +0100
++++ b/src/CMakeLists.txt	2023-06-26 09:35:24.063951904 +0200
+@@ -0,0 +1,365 @@
++set(HEADERS
++  qwt.h
++  qwt_abstract_scale_draw.h
++  qwt_clipper.h
++  qwt_color_map.h
++  qwt_compat.h
++  qwt_column_symbol.h
++  qwt_date.h
++  qwt_date_scale_draw.h
++  qwt_date_scale_engine.h
++  qwt_dyngrid_layout.h
++  qwt_global.h
++  qwt_graphic.h
++  qwt_interval.h
++  qwt_interval_symbol.h
++  qwt_math.h
++  qwt_magnifier.h
++  qwt_null_paintdevice.h
++  qwt_painter.h
++  qwt_painter_command.h
++  qwt_panner.h
++  qwt_picker.h
++  qwt_picker_machine.h
++  qwt_pixel_matrix.h
++  qwt_point_3d.h
++  qwt_point_polar.h
++  qwt_round_scale_draw.h
++  qwt_scale_div.h
++  qwt_scale_draw.h
++  qwt_scale_engine.h
++  qwt_scale_map.h
++  qwt_spline.h
++  qwt_symbol.h
++  qwt_system_clock.h
++  qwt_text_engine.h
++  qwt_text_label.h
++  qwt_text.h
++  qwt_transform.h
++  qwt_widget_overlay.h
++)
++set(SOURCES
++  qwt_abstract_scale_draw.cpp
++  qwt_clipper.cpp
++  qwt_color_map.cpp
++  qwt_column_symbol.cpp
++  qwt_date.cpp
++  qwt_date_scale_draw.cpp
++  qwt_date_scale_engine.cpp
++  qwt_dyngrid_layout.cpp
++  qwt_event_pattern.cpp
++  qwt_graphic.cpp
++  qwt_interval.cpp
++  qwt_interval_symbol.cpp
++  qwt_math.cpp
++  qwt_magnifier.cpp
++  qwt_null_paintdevice.cpp
++  qwt_painter.cpp
++  qwt_painter_command.cpp
++  qwt_panner.cpp
++  qwt_picker.cpp
++  qwt_picker_machine.cpp
++  qwt_pixel_matrix.cpp
++  qwt_point_3d.cpp
++  qwt_point_polar.cpp
++  qwt_round_scale_draw.cpp
++  qwt_scale_div.cpp
++  qwt_scale_draw.cpp
++  qwt_scale_map.cpp
++  qwt_spline.cpp
++  qwt_scale_engine.cpp
++  qwt_symbol.cpp
++  qwt_system_clock.cpp
++  qwt_text_engine.cpp
++  qwt_text_label.cpp
++  qwt_text.cpp
++  qwt_transform.cpp
++  qwt_widget_overlay.cpp
++)
++
++if(QWT_PLOT)
++  list(APPEND HEADERS
++    qwt_curve_fitter.h
++    qwt_event_pattern.h
++    qwt_abstract_legend.h
++    qwt_legend.h
++    qwt_legend_data.h
++    qwt_legend_label.h
++    qwt_plot.h
++    qwt_plot_renderer.h
++    qwt_plot_curve.h
++    qwt_plot_dict.h
++    qwt_plot_directpainter.h
++    qwt_plot_grid.h
++    qwt_plot_histogram.h
++    qwt_plot_item.h
++    qwt_plot_abstract_barchart.h
++    qwt_plot_barchart.h
++    qwt_plot_multi_barchart.h
++    qwt_plot_intervalcurve.h
++    qwt_plot_tradingcurve.h
++    qwt_plot_layout.h
++    qwt_plot_marker.h
++    qwt_plot_zoneitem.h
++    qwt_plot_textlabel.h
++    qwt_plot_rasteritem.h
++    qwt_plot_spectrogram.h
++    qwt_plot_spectrocurve.h
++    qwt_plot_scaleitem.h
++    qwt_plot_legenditem.h
++    qwt_plot_seriesitem.h
++    qwt_plot_shapeitem.h
++    qwt_plot_canvas.h
++    qwt_plot_panner.h
++    qwt_plot_picker.h
++    qwt_plot_zoomer.h
++    qwt_plot_magnifier.h
++    qwt_plot_rescaler.h
++    qwt_point_mapper.h
++    qwt_raster_data.h
++    qwt_matrix_raster_data.h
++    qwt_sampling_thread.h
++    qwt_samples.h
++    qwt_series_data.h
++    qwt_series_store.h
++    qwt_point_data.h
++    qwt_scale_widget.h 
++  )
++  list(APPEND SOURCES
++    qwt_curve_fitter.cpp
++    qwt_abstract_legend.cpp
++    qwt_legend.cpp
++    qwt_legend_data.cpp
++    qwt_legend_label.cpp
++    qwt_plot.cpp
++    qwt_plot_renderer.cpp
++    qwt_plot_xml.cpp
++    qwt_plot_axis.cpp
++    qwt_plot_curve.cpp
++    qwt_plot_dict.cpp
++    qwt_plot_directpainter.cpp
++    qwt_plot_grid.cpp
++    qwt_plot_histogram.cpp
++    qwt_plot_item.cpp
++    qwt_plot_abstract_barchart.cpp
++    qwt_plot_barchart.cpp
++    qwt_plot_multi_barchart.cpp
++    qwt_plot_intervalcurve.cpp
++    qwt_plot_zoneitem.cpp
++    qwt_plot_tradingcurve.cpp
++    qwt_plot_spectrogram.cpp
++    qwt_plot_spectrocurve.cpp
++    qwt_plot_scaleitem.cpp
++    qwt_plot_legenditem.cpp
++    qwt_plot_seriesitem.cpp
++    qwt_plot_shapeitem.cpp
++    qwt_plot_marker.cpp
++    qwt_plot_textlabel.cpp
++    qwt_plot_layout.cpp
++    qwt_plot_canvas.cpp
++    qwt_plot_panner.cpp
++    qwt_plot_rasteritem.cpp
++    qwt_plot_picker.cpp
++    qwt_plot_zoomer.cpp
++    qwt_plot_magnifier.cpp
++    qwt_plot_rescaler.cpp
++    qwt_point_mapper.cpp
++    qwt_raster_data.cpp
++    qwt_matrix_raster_data.cpp
++    qwt_sampling_thread.cpp
++    qwt_series_data.cpp
++    qwt_point_data.cpp
++    qwt_scale_widget.cpp
++  )
++endif()
++
++if(QWT_OPENGL)
++  if(QT_VERSION_MAJOR VERSION_LESS 6)
++    list(APPEND HEADERS qwt_plot_glcanvas.h)
++    list(APPEND SOURCES qwt_plot_glcanvas.cpp)
++  endif()
++endif()
++
++if(QWT_SVG)
++  list(APPEND HEADERS qwt_plot_svgitem.h)
++  list(APPEND SOURCES qwt_plot_svgitem.cpp)
++endif()
++
++if(QWT_WIDGETS)
++  list(APPEND HEADERS
++    qwt_abstract_slider.h
++    qwt_abstract_scale.h
++    qwt_arrow_button.h
++    qwt_analog_clock.h
++    qwt_compass.h
++    qwt_compass_rose.h
++    qwt_counter.h
++    qwt_dial.h
++    qwt_dial_needle.h
++    qwt_knob.h
++    qwt_slider.h
++    qwt_thermo.h
++    qwt_wheel.h
++  )
++  list(APPEND SOURCES
++    qwt_abstract_slider.cpp
++    qwt_abstract_scale.cpp
++    qwt_arrow_button.cpp
++    qwt_analog_clock.cpp
++    qwt_compass.cpp
++    qwt_compass_rose.cpp
++    qwt_counter.cpp
++    qwt_dial.cpp
++    qwt_dial_needle.cpp
++    qwt_knob.cpp
++    qwt_slider.cpp
++    qwt_thermo.cpp
++    qwt_wheel.cpp
++  )
++endif()
++
++add_library(qwt_objects OBJECT ${SOURCES} ${HEADERS})
++
++target_include_directories(qwt_objects INTERFACE
++  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
++  $<INSTALL_INTERFACE:include/qwt${QWT_NAME_SUFFIX}>
++)
++
++target_link_libraries(qwt_objects PUBLIC
++  Qt${QT_VERSION_MAJOR}::Core
++  Qt${QT_VERSION_MAJOR}::Concurrent
++  Qt${QT_VERSION_MAJOR}::PrintSupport
++)
++
++target_compile_definitions(qwt_objects PRIVATE
++  QT_NO_KEYWORDS
++  QWT_MOC_INCLUDE
++)
++
++set_target_properties(qwt_objects PROPERTIES AUTOMOC ON)
++
++if(NOT QWT_PLOT)
++  target_compile_definitions(qwt_objects PUBLIC NO_QWT_PLOT)
++endif()
++
++if(QWT_WIDGETS)
++  target_link_libraries(qwt_objects PUBLIC Qt${QT_VERSION_MAJOR}::Widgets)
++else()
++  target_compile_definitions(qwt_objects PUBLIC NO_QWT_WIDGETS)
++endif()
++
++if(QWT_OPENGL)
++  target_link_libraries(qwt_objects PUBLIC Qt${QT_VERSION_MAJOR}::OpenGL)
++  if(QT_VERSION_MAJOR VERSION_GREATER_EQUAL 6)
++    target_link_libraries(qwt_objects PUBLIC Qt${QT_VERSION_MAJOR}::OpenGLWidgets)
++  endif()
++else()
++  target_compile_definitions(qwt_objects PUBLIC QWT_NO_OPENGL)
++endif()
++
++if(QWT_SVG)
++  target_link_libraries(qwt_objects PUBLIC Qt${QT_VERSION_MAJOR}::Svg)
++else()
++  target_compile_definitions(qwt_objects PUBLIC QWT_NO_SVG)
++endif()
++
++
++if(WIN32 AND QWT_DLL)
++  target_compile_definitions(qwt_objects
++    PUBLIC QWT_DLL
++    PRIVATE QWT_MAKEDLL
++  )
++endif()
++
++set(QWT_LIBS "")
++
++if(QWT_DLL)
++  add_library(qwt_shared SHARED)
++  target_link_libraries(qwt_shared PUBLIC qwt_objects)
++  list(APPEND QWT_LIBS qwt_shared)
++  set_target_properties(qwt_shared PROPERTIES EXPORT_NAME "Qwt_SHARED")
++  set_target_properties(qwt_shared PROPERTIES OUTPUT_NAME "qwt${QWT_NAME_SUFFIX}")
++endif()
++
++if(QWT_STATIC)
++  add_library(qwt_static STATIC)
++  target_link_libraries(qwt_static PUBLIC qwt_objects)
++  list(APPEND QWT_LIBS qwt_static)
++  set_target_properties(qwt_static PROPERTIES EXPORT_NAME "Qwt_STATIC")
++  if((MSVC OR (APPLE AND QWT_FRAMEWORK)) AND QWT_DLL)
++    set_target_properties(qwt_static PROPERTIES OUTPUT_NAME "qwt${QWT_NAME_SUFFIX}-static")
++  else()
++    set_target_properties(qwt_static PROPERTIES OUTPUT_NAME "qwt${QWT_NAME_SUFFIX}")
++  endif()
++endif()
++
++if(QWT_DLL)
++  add_library(qwt ALIAS qwt_shared)
++else()
++  add_library(qwt ALIAS qwt_static)
++endif()
++
++if(QWT_DLL AND NOT APPLE AND NOT MSVC)
++  set_target_properties(qwt_shared PROPERTIES
++    VERSION ${PROJECT_VERSION}
++    SOVERSION ${PROJECT_VERSION_MAJOR}
++  )
++endif()
++
++if(APPLE AND QWT_FRAMEWORK)
++  set_target_properties(${QWT_LIBS} PROPERTIES FRAMEWORK TRUE)
++endif()
++
++install(TARGETS ${QWT_LIBS} qwt_objects
++  EXPORT QwtTargets
++  RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
++  LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
++  ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
++  FRAMEWORK DESTINATION ${CMAKE_INSTALL_LIBDIR}
++)
++
++set(QWT_CONFIG_NAME "Qt${QT_VERSION_MAJOR}Qwt6")
++
++install(EXPORT QwtTargets
++  FILE ${QWT_CONFIG_NAME}Targets.cmake
++  NAMESPACE "Qwt::"
++  DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/${QWT_CONFIG_NAME}
++)
++include(CMakePackageConfigHelpers)
++
++get_target_property(QT_LIBRARIES qwt_objects INTERFACE_LINK_LIBRARIES)
++string(JOIN " " QT_LIBRARIES ${QT_LIBRARIES})
++string(REPLACE "::" "" QT_LIBRARIES ${QT_LIBRARIES})
++
++configure_package_config_file(${CMAKE_CURRENT_SOURCE_DIR}/qwt-config.cmake.in
++  "${CMAKE_CURRENT_BINARY_DIR}/${QWT_CONFIG_NAME}Config.cmake"
++  INSTALL_DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/${QWT_CONFIG_NAME}"
++  NO_SET_AND_CHECK_MACRO
++  NO_CHECK_REQUIRED_COMPONENTS_MACRO
++)
++write_basic_package_version_file(
++  "${CMAKE_CURRENT_BINARY_DIR}/${QWT_CONFIG_NAME}ConfigVersion.cmake"
++  VERSION "${Qwt_VERSION}"
++  COMPATIBILITY AnyNewerVersion
++)
++install(FILES
++  ${CMAKE_CURRENT_BINARY_DIR}/${QWT_CONFIG_NAME}Config.cmake
++  ${CMAKE_CURRENT_BINARY_DIR}/${QWT_CONFIG_NAME}ConfigVersion.cmake
++  DESTINATION lib/cmake/${QWT_CONFIG_NAME}
++)
++
++install(FILES ${HEADERS}
++  DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${QWT_NAME_SUFFIX}
++)
++
++get_target_property(QWT_COMPILE_DEFINITIONS qwt_objects INTERFACE_COMPILE_DEFINITIONS)
++string(JOIN " -D" QWT_COMPILE_DEFINITIONS ${QWT_COMPILE_DEFINITIONS})
++string(PREPEND QWT_COMPILE_DEFINITIONS "-D")
++
++set(QWT_PKGCONFIG_FILE ${QWT_CONFIG_NAME}.pc)
++
++configure_file(qwt.pc.in ${QWT_PKGCONFIG_FILE} @ONLY)
++
++install(FILES ${CMAKE_CURRENT_BINARY_DIR}/${QWT_PKGCONFIG_FILE}
++  DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig
++)
+diff --color -Naur a/src/qwt-config.cmake.in b/src/qwt-config.cmake.in
+--- a/src/qwt-config.cmake.in	1970-01-01 01:00:00.000000000 +0100
++++ b/src/qwt-config.cmake.in	2023-06-26 09:35:24.063951904 +0200
+@@ -0,0 +1,17 @@
++
++@PACKAGE_INIT@
++
++include ( "${CMAKE_CURRENT_LIST_DIR}/@QWT_CONFIG_NAME@Targets.cmake" )
++
++set(QWT_INCLUDE_DIRS ${PACKAGE_PREFIX_DIR}/include/qwt@QWT_NAME_SUFFIX@)
++
++if(TARGET Qwt::Qwt_SHARED)
++  add_library(Qwt::Qwt ALIAS Qwt::Qwt_SHARED)
++else()
++  add_library(Qwt::Qwt ALIAS Qwt::Qwt_STATIC)
++endif()
++
++set(QT_LIBRARIES @QT_LIBRARIES@)
++foreach(qt_lib ${QT_LIBRARIES})
++  find_package(${qt_lib} @QT_VERSION@ REQUIRED)
++endforeach()
+diff --color -Naur a/src/qwt.pc.in b/src/qwt.pc.in
+--- a/src/qwt.pc.in	1970-01-01 01:00:00.000000000 +0100
++++ b/src/qwt.pc.in	2023-06-26 09:35:24.063951904 +0200
+@@ -0,0 +1,12 @@
++prefix=@CMAKE_INSTALL_PREFIX@
++exec_prefix=${prefix}
++libdir=${prefix}/@CMAKE_INSTALL_LIBDIR@
++includedir=${prefix}/@CMAKE_INSTALL_INCLUDEDIR@
++
++Name: @PROJECT_NAME@
++Description: @PROJECT_DESCRIPTION@
++Version: @PROJECT_VERSION@
++
++Libs: -L${libdir} -lqwt@QWT_NAME_SUFFIX@
++Cflags: -I${includedir}/qwt@QWT_NAME_SUFFIX@ @QWT_COMPILE_DEFINITIONS@
++Requires: @QT_LIBRARIES@
