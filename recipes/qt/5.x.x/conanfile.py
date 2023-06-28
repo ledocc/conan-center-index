@@ -68,6 +68,7 @@ class QtConan(ConanFile):
         "with_atspi": [True, False],
         "with_md4c": [True, False],
         "with_x11": [True, False],
+        "with_journald": [True, False],
 
         "gui": [True, False],
         "widgets": [True, False],
@@ -112,6 +113,7 @@ class QtConan(ConanFile):
         "with_atspi": False,
         "with_md4c": True,
         "with_x11": True,
+        "with_journald": False,
 
         "gui": True,
         "widgets": True,
@@ -182,6 +184,7 @@ class QtConan(ConanFile):
             del self.options.with_fontconfig
             del self.options.with_libalsa
             del self.options.with_x11
+            del self.options.with_journald
             del self.options.qtx11extras
         if self.settings.compiler == "apple-clang":
             if Version(self.settings.compiler.version) < "10.0":
@@ -399,6 +402,8 @@ class QtConan(ConanFile):
             self.requires("xorg/system")
         if self.options.get_safe("with_x11") or self.options.qtwayland:
             self.requires("xkbcommon/1.5.0")
+        if self.options.get_safe("with_journald"):
+            self.requires("systemd/system")
         if self.options.get_safe("opengl", "no") != "no":
             self.requires("opengl/system")
         if self.options.with_zstd:
@@ -673,6 +678,9 @@ class QtConan(ConanFile):
                 args += ["-openssl-runtime"]
             else:
                 args += ["-openssl-linked"]
+
+        if self.options.get_safe("with_journald"):
+            args += ["-journald"]
 
         # args.append("--iconv=" + ("gnu" if self.options.with_libiconv else "no"))# QTBUG-84708
 
