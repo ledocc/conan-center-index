@@ -1,0 +1,25 @@
+diff --color -Naur a/CMakeLists.txt b/CMakeLists.txt
+--- a/CMakeLists.txt	2023-04-23 08:08:34.000000000 +0200
++++ b/CMakeLists.txt	2023-07-06 14:07:32.796630973 +0200
+@@ -65,10 +65,10 @@
+ include(GNUInstallDirs)
+ if(BUILD_WITH_QT6)
+   set(QCA_QT_PC_VERSION "Qt6Core")
+-  set(QCA_SUFFIX "qt6")
++  set(QCA_SUFFIX_DEDUCTED "qt6")
+ else()
+   set(QCA_QT_PC_VERSION "Qt5Core")
+-  set(QCA_SUFFIX "qt5")
++  set(QCA_SUFFIX_DEDUCTED "qt5")
+ endif()
+ 
+ # QCA can be shared but plugins will be static
+@@ -81,7 +81,7 @@
+   set(PLUGIN_TYPE "MODULE")
+ endif()
+ 
+-set(QCA_SUFFIX "${QCA_SUFFIX}" CACHE STRING "QCA common suffix")
++set(QCA_SUFFIX "${QCA_SUFFIX_DEDUCTED}" CACHE STRING "QCA common suffix")
+ if(QCA_SUFFIX)
+   set(QCA_LIB_NAME qca-${QCA_SUFFIX})
+   set(QCA_TOOL_NAME qcatool-${QCA_SUFFIX})

@@ -1,0 +1,10 @@
+sources:
+  "3.32.0":
+    url: "https://github.com/qgis/QGIS/archive/refs/tags/final-3_30_2.tar.gz"
+    sha256: "7420d1c196dce2d71b15e4a3e5f5f2099c26427d8ea540212498f3fc381d3b36"
+  "3.30.2":
+    url: "https://github.com/qgis/QGIS/archive/refs/tags/final-3_30_2.tar.gz"
+    sha256: "300ac01c3e302c558cb087f3332ae7ddfdfc460d3e28ca3c4d999ef8669ed160"
+patches:
+  "3.30.2":
+    - patch_file: "patches/fix-cmake-3.30.2.patch"

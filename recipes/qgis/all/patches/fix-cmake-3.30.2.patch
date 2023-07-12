@@ -1,0 +1,979 @@
+diff --color -Naur a/CMakeLists.txt b/CMakeLists.txt
+--- a/CMakeLists.txt	2023-04-28 14:11:34.000000000 +0200
++++ b/CMakeLists.txt	2023-07-06 18:42:39.142533932 +0200
+@@ -59,24 +59,8 @@
+   option(USE_OPENCL "Use OpenCL" ON)
+ endif()
+ if (USE_OPENCL)
+-    find_package(OpenCL)
+-    if(${OpenCL_FOUND})
+-        set(HAVE_OPENCL TRUE)
+-        # Fixup for standard FindOpenCL module not assigning proper framework headers directory
+-        if (APPLE AND "${OpenCL_INCLUDE_DIR}" MATCHES "OpenCL\\.framework/?$")
+-            set(OpenCL_INCLUDE_DIR "${OpenCL_INCLUDE_DIR}/Headers" CACHE PATH "" FORCE)
+-            set(OpenCL_INCLUDE_DIRS ${OpenCL_INCLUDE_DIR})
+-        endif()
+-        find_package(OpenCLhpp)
+-        if(NOT OPENCL_HPP_FOUND)
+-            # Use internal headers copied from OpenCL-CLHPP project
+-            set(OPENCL_HPP_INCLUDE_DIR ${CMAKE_SOURCE_DIR}/external/opencl-clhpp/include CACHE PATH "" FORCE)
+-            message(STATUS "Couldn't find OpenCL C++ headers, using internal: ${OPENCL_HPP_INCLUDE_DIR}")
+-        endif()
+-        set(OpenCL_INCLUDE_DIRS ${OpenCL_INCLUDE_DIRS} ${OPENCL_HPP_INCLUDE_DIR})
+-    else()
+-        message(STATUS "Couldn't find OpenCL: support DISABLED")
+-    endif()
++    find_package(OpenCL REQUIRED)
++    find_package(OpenCLHeadersCpp REQUIRED)
+ endif()
+ 
+ # Configure CCache if available
+@@ -355,13 +339,10 @@
+   find_package(GEOS)
+   find_package(GDAL)
+   find_package(Expat REQUIRED)
+-  find_package(Spatialindex REQUIRED)
++  find_package(libspatialindex REQUIRED)
+   find_package(LibZip REQUIRED)
+ 
+-  find_package(Sqlite3)
+-  if (NOT SQLITE3_FOUND)
+-    message (SEND_ERROR "sqlite3 dependency was not found!")
+-  endif()
++  find_package(Sqlite3 REQUIRED)
+ 
+   find_package(Protobuf REQUIRED)   # for decoding of vector tiles in MVT format
+   message(STATUS "Found Protobuf: ${Protobuf_LIBRARIES}")
+@@ -391,8 +372,8 @@
+     set (HAVE_SPATIALITE TRUE)
+   endif()
+ 
+-  if (NOT PROJ_FOUND OR NOT GEOS_FOUND OR NOT GDAL_FOUND)
+-    message (SEND_ERROR "Some dependencies were not found! Proj: ${PROJ_FOUND}, Geos: ${GEOS_FOUND}, GDAL: ${GDAL_FOUND}")
++  if (NOT Proj_FOUND OR NOT GEOS_FOUND OR NOT GDAL_FOUND)
++    message (SEND_ERROR "Some dependencies were not found! Proj: ${Proj_FOUND}, Geos: ${GEOS_FOUND}, GDAL: ${GDAL_FOUND}")
+   endif()
+ 
+   if (POSTGRES_FOUND)
+@@ -514,7 +495,7 @@
+   # Password helper
+   find_package(QtKeychain REQUIRED)
+   # Master password hash and authentication encryption
+-  find_package(QCA REQUIRED)
++  find_package(Qca REQUIRED)
+   # Check for runtime dependency of qca-ossl plugin
+   # REQUIRED if unit tests are to be run from build directory
+   if(NOT MSVC)
+diff --color -Naur a/cmake_templates/qgsconfig.h.in b/cmake_templates/qgsconfig.h.in
+--- a/cmake_templates/qgsconfig.h.in	2023-04-28 14:11:34.000000000 +0200
++++ b/cmake_templates/qgsconfig.h.in	2023-07-06 14:27:35.730525501 +0200
+@@ -51,9 +51,9 @@
+ #define PYTHON_VERSION_MINOR "${Python_VERSION_MINOR}"
+ #define PYTHON_VERSION_PATCH "${Python_VERSION_PATCH}"
+ 
+-#define PROJ_VERSION_MAJOR ${PROJ_VERSION_MAJOR}
+-#define PROJ_VERSION_MINOR ${PROJ_VERSION_MINOR}
+-#define PROJ_VERSION_PATCH ${PROJ_VERSION_PATCH}
++#define PROJ_VERSION_MAJOR ${Proj_VERSION_MAJOR}
++#define PROJ_VERSION_MINOR ${Proj_VERSION_MINOR}
++#define PROJ_VERSION_PATCH ${Proj_VERSION_PATCH}
+ 
+ #cmakedefine USING_NMAKE
+ 
+diff --color -Naur a/external/o2/src/CMakeLists.txt b/external/o2/src/CMakeLists.txt
+--- a/external/o2/src/CMakeLists.txt	2023-04-28 14:11:34.000000000 +0200
++++ b/external/o2/src/CMakeLists.txt	2023-07-06 15:04:08.759454252 +0200
+@@ -161,8 +161,7 @@
+     endif()
+     if(QTKEYCHAIN_FOUND OR QT5KEYCHAIN_FOUND)
+         message("Found QTKeychain")
+-        list(APPEND LINK_TARGETS ${QTKEYCHAIN_LIBRARY})
+-        include_directories(${QTKEYCHAIN_INCLUDE_DIR})
++        list(APPEND LINK_TARGETS qtkeychain::qtkeychain)
+         set( o2_SRCS
+                 ${o2_SRCS}
+                 o0keychainstore.cpp
+diff --color -Naur a/external/qspatialite/CMakeLists.txt b/external/qspatialite/CMakeLists.txt
+--- a/external/qspatialite/CMakeLists.txt	2023-04-28 14:11:34.000000000 +0200
++++ b/external/qspatialite/CMakeLists.txt	2023-07-06 14:50:57.227707074 +0200
+@@ -5,20 +5,16 @@
+ add_definitions(-DQT_PLUGIN)
+ add_definitions(-DQT_SHARED)
+ 
+-include_directories(SYSTEM
+-	${SQLITE3_INCLUDE_DIR}
+-	${Qt5Sql_PRIVATE_INCLUDE_DIRS}
+-)
+-
+ set(QSQLSPATIALITE_SRC qsql_spatialite.cpp smain.cpp)
+ QT5_WRAP_CPP(QSQLSPATIALITE_SRC qsql_spatialite.h smain.h)
+ 
+ add_library(qsqlspatialite SHARED ${QSQLSPATIALITE_SRC})
+ target_link_libraries(qsqlspatialite
+-        ${Qt5Core_LIBRARIES}
+-        ${Qt5Sql_LIBRARIES}
+-	${SQLITE3_LIBRARY}
+-	${SPATIALITE_LIBRARY}
++        ${QT_VERSION_BASE}::Core
++        ${QT_VERSION_BASE}::Sql
++        ${QT_VERSION_BASE}::SqlPrivate
++	SQLite::SQLite3
++	spatialite::spatialite
+ 	qgis_core
+ )
+ 
+diff --color -Naur a/postinstall/CMakeLists.txt b/postinstall/CMakeLists.txt
+--- a/postinstall/CMakeLists.txt	2023-04-28 14:11:34.000000000 +0200
++++ b/postinstall/CMakeLists.txt	2023-07-13 07:44:56.740533234 +0200
+@@ -9,4 +9,4 @@
+ endif()
+ 
+ configure_file("PostInstall.cmake.in" "PostInstall.cmake" @ONLY)
+-install(SCRIPT "${CMAKE_BINARY_DIR}/postinstall/PostInstall.cmake")
++#install(SCRIPT "${CMAKE_BINARY_DIR}/postinstall/PostInstall.cmake")
+diff --color -Naur a/src/3d/CMakeLists.txt b/src/3d/CMakeLists.txt
+--- a/src/3d/CMakeLists.txt	2023-04-28 14:11:34.000000000 +0200
++++ b/src/3d/CMakeLists.txt	2023-07-06 14:51:53.099625058 +0200
+@@ -236,11 +236,9 @@
+   ${CMAKE_SOURCE_DIR}/external/delaunator-cpp
+ )
+ 
+-if (BUILD_WITH_QT6)
+-  target_link_libraries(qgis_3d Qt6::3DCore Qt6::3DRender Qt6::3DInput Qt6::3DLogic Qt6::3DExtras)
+-else()
+-  target_link_libraries(qgis_3d Qt5::3DCore Qt5::3DRender Qt5::3DInput Qt5::3DLogic Qt5::3DExtras)
+-endif()
++
++target_link_libraries(qgis_3d ${QT_VERSION_BASE}::3DCore ${QT_VERSION_BASE}::3DRender ${QT_VERSION_BASE}::3DInput ${QT_VERSION_BASE}::3DLogic ${QT_VERSION_BASE}::3DExtras)
++
+ 
+ GENERATE_EXPORT_HEADER(
+    qgis_3d
+diff --color -Naur a/src/analysis/CMakeLists.txt b/src/analysis/CMakeLists.txt
+--- a/src/analysis/CMakeLists.txt	2023-04-28 14:11:34.000000000 +0200
++++ b/src/analysis/CMakeLists.txt	2023-07-06 19:06:17.851320985 +0200
+@@ -407,7 +407,7 @@
+   vector/qgszonalstatistics.h
+ )
+ 
+-if (${QT_VERSION_BASE}PrintSupport_FOUND)
++if (TARGET ${QT_VERSION_BASE}::PrintSupport)
+   set(QGIS_ANALYSIS_SRCS ${QGIS_ANALYSIS_SRCS}
+ 
+     processing/qgsalgorithmlayoutatlastoimage.cpp
+@@ -454,13 +454,6 @@
+   )
+ endif()
+ 
+-# install headers
+-
+-if(HAVE_OPENCL)
+-    include_directories(SYSTEM ${OpenCL_INCLUDE_DIRS})
+-endif()
+-
+-
+ 
+ #############################################################
+ # qgis_analysis library
+diff --color -Naur a/src/app/CMakeLists.txt b/src/app/CMakeLists.txt
+--- a/src/app/CMakeLists.txt	2023-04-28 14:11:34.000000000 +0200
++++ b/src/app/CMakeLists.txt	2023-07-06 17:48:00.619365813 +0200
+@@ -467,10 +467,6 @@
+   PROPERTIES COMPILE_FLAGS -wd4091)
+ endif()
+ 
+-if(HAVE_OPENCL)
+-    include_directories(SYSTEM ${OpenCL_INCLUDE_DIRS})
+-endif()
+-
+ if (WITH_PDAL)
+   include_directories(SYSTEM ${PDAL_INCLUDE_DIR})
+   if(MSVC)
+diff --color -Naur a/src/core/CMakeLists.txt b/src/core/CMakeLists.txt
+--- a/src/core/CMakeLists.txt	2023-04-28 14:11:34.000000000 +0200
++++ b/src/core/CMakeLists.txt	2023-07-06 19:05:09.255472242 +0200
+@@ -956,7 +956,7 @@
+   set_source_files_properties(qgsspatialindex.cpp PROPERTIES COMPILE_FLAGS -Wno-overloaded-virtual)
+ endif()
+ 
+-if (${QT_VERSION_BASE}Positioning_FOUND)
++if (TARGET ${QT_VERSION_BASE}::Positioning)
+   set(QGIS_CORE_SRCS ${QGIS_CORE_SRCS}
+     gps/qgsqtlocationconnection.cpp
+   )
+@@ -1955,7 +1955,7 @@
+   )
+ endif()
+ 
+-if (${QT_VERSION_BASE}Positioning_FOUND)
++if (TARGET ${QT_VERSION_BASE}::Positioning)
+   set(QGIS_CORE_HDRS ${QGIS_CORE_HDRS}
+     gps/qgsqtlocationconnection.h
+   )
+@@ -1994,7 +1994,7 @@
+ # install qgsconfig.h and plugin.h here so they can get into
+ # the OS X framework target
+ 
+-if (${QT_VERSION_BASE}Positioning_FOUND)
++if (TARGET ${QT_VERSION_BASE}::Positioning)
+   set(QGIS_CORE_HDRS ${QGIS_CORE_HDRS}
+     gps/qgsqtlocationconnection.h
+     gps/qgsgpsconnectionregistry.h
+@@ -2017,7 +2017,6 @@
+     set(QGIS_CORE_HDRS ${QGIS_CORE_HDRS}
+         qgsopenclutils.h
+     )
+-    include_directories(SYSTEM ${OpenCL_INCLUDE_DIRS})
+ endif()
+ 
+ if (WITH_EPT)
+@@ -2141,31 +2140,6 @@
+   target_compile_definitions(qgis_core PUBLIC _HAS_AUTO_PTR_ETC=1)
+ endif()
+ 
+-target_include_directories(qgis_core SYSTEM PUBLIC
+-  ${${QT_VERSION_BASE}Core_INCLUDE_DIRS}
+-  ${${QT_VERSION_BASE}Gui_INCLUDE_DIRS}
+-  ${${QT_VERSION_BASE}Xml_INCLUDE_DIRS}
+-  ${${QT_VERSION_BASE}Widgets_INCLUDE_DIRS}
+-  ${${QT_VERSION_BASE}Svg_INCLUDE_DIRS}
+-  ${${QT_VERSION_BASE}PrintSupport_INCLUDE_DIRS}
+-  ${${QT_VERSION_BASE}Network_INCLUDE_DIRS}
+-  ${${QT_VERSION_BASE}Sql_INCLUDE_DIRS}
+-  ${${QT_VERSION_BASE}Concurrent_INCLUDE_DIRS}
+-  ${PROJ_INCLUDE_DIR}
+-  ${GDAL_INCLUDE_DIR}
+-  ${LIBZIP_INCLUDE_DIRS}
+-  ${SPATIALINDEX_INCLUDE_DIR} # before GEOS for case-insensitive filesystems
+-  ${GEOS_INCLUDE_DIR}
+-  ${EXPAT_INCLUDE_DIR}
+-  ${SQLITE3_INCLUDE_DIR}
+-  ${QCA_INCLUDE_DIR}
+-  ${QTKEYCHAIN_INCLUDE_DIR}
+-  ${${QT_VERSION_BASE}SerialPort_INCLUDE_DIRS}
+-  ${Protobuf_INCLUDE_DIRS}
+-  ${ZLIB_INCLUDE_DIRS}
+-  ${EXIV2_INCLUDE_DIR}
+-)
+-
+ if (WITH_SPATIALITE)
+   target_include_directories(qgis_core SYSTEM PUBLIC
+     ${SPATIALITE_INCLUDE_DIR}
+@@ -2175,6 +2149,7 @@
+ target_include_directories(qgis_core PUBLIC
+   ${CMAKE_CURRENT_SOURCE_DIR}
+   ${CMAKE_CURRENT_BINARY_DIR}
++  ${CMAKE_CURRENT_BINARY_DIR}/vectortile
+   3d
+   actions
+   annotations
+@@ -2260,7 +2235,8 @@
+ endif()
+ 
+ if(HAVE_OPENCL)
+-  target_link_libraries(qgis_core ${OpenCL_LIBRARY})
++  target_link_libraries(qgis_core OpenCL::OpenCL)
++  target_link_libraries(qgis_core OpenCL::HeadersCpp)
+ endif()
+ 
+ 
+@@ -2321,18 +2297,18 @@
+   ${QT_VERSION_BASE}::Sql
+   ${QT_VERSION_BASE}::Concurrent
+   ${OPTIONAL_QTWEBKIT}
+-  ${QCA_LIBRARY}
+-  ${QTKEYCHAIN_LIBRARY}
+-  ${PROJ_LIBRARY}
+-  ${GEOS_LIBRARY}
+-  ${GDAL_LIBRARY}
+-  ${SPATIALINDEX_LIBRARY}
+-  ${EXPAT_LIBRARY}
+-  ${SQLITE3_LIBRARY}
+-  ${LIBZIP_LIBRARY}
+-  ${Protobuf_LITE_LIBRARY}
+-  ${ZLIB_LIBRARIES}
+-  ${EXIV2_LIBRARY}
++  Qca::Qca
++  QtKeychain::QtKeychain
++  PROJ::proj
++  GEOS::geos
++  GDAL::GDAL
++  libspatialindex::libspatialindex
++  expat::expat
++  SQLite::SQLite3
++  libzip::zip
++  protobuf::libprotobuf-lite
++  ZLIB::ZLIB
++  exiv2::exiv2
+ )
+ if (NOT IOS)
+   target_link_libraries(qgis_core ${QT_VERSION_BASE}::PrintSupport)
+@@ -2364,6 +2340,11 @@
+   )
+ endif()
+ 
++if (WITH_QTSERIALPORT)
++  target_link_libraries(qgis_core ${QT_VERSION_BASE}::SerialPort)
++endif()
++
++
+ if (FORCE_STATIC_LIBS)
+   target_link_libraries(qgis_core
+     provider_wms_a
+@@ -2404,13 +2385,13 @@
+   set(TARGET_LINK_LIBRARIES qgis_core odbc32 odbccp32)
+ endif()
+ 
+-if (${QT_VERSION_BASE}SerialPort_FOUND)
++if (TARGET ${QT_VERSION_BASE}::SerialPort)
+   target_link_libraries(qgis_core
+     ${QT_VERSION_BASE}::SerialPort
+   )
+ endif()
+ 
+-if (${QT_VERSION_BASE}Positioning_FOUND)
++if (TARGET ${QT_VERSION_BASE}::Positioning)
+   target_link_libraries(qgis_core
+     ${QT_VERSION_BASE}::Positioning
+   )
+diff --color -Naur a/src/crssync/CMakeLists.txt b/src/crssync/CMakeLists.txt
+--- a/src/crssync/CMakeLists.txt	2023-04-28 14:11:34.000000000 +0200
++++ b/src/crssync/CMakeLists.txt	2023-06-06 02:06:05.709990177 +0200
+@@ -10,8 +10,8 @@
+ 
+   target_link_libraries(crssync
+     qgis_core
+-    ${PROJ_LIBRARY}
+-    ${GDAL_LIBRARY}
++    PROJ::proj
++    GDAL::GDAL
+   )
+ 
+   if(MSVC AND NOT USING_NMAKE)
+diff --color -Naur a/src/gui/CMakeLists.txt b/src/gui/CMakeLists.txt
+--- a/src/gui/CMakeLists.txt	2023-04-28 14:11:34.000000000 +0200
++++ b/src/gui/CMakeLists.txt	2023-07-06 19:01:27.271975055 +0200
+@@ -1422,17 +1422,12 @@
+ 
+ find_package(${QT_VERSION_BASE} COMPONENTS Multimedia MultimediaWidgets Qml QuickWidgets UiTools REQUIRED)
+ 
+-if(${QT_VERSION_BASE}Qml_FOUND)
++if(TARGET ${QT_VERSION_BASE}::Qml)
+   add_definitions(-DWITH_QML)
+   set(QGIS_GUI_HDRS
+     ${QGIS_GUI_HDRS}
+     editorwidgets/qgsqmlwidgetwrapper.h
+   )
+-endif()
+-
+-# for installing headers
+-
+-if(${QT_VERSION_BASE}Qml_FOUND)
+   set(QGIS_GUI_SRCS
+     ${QGIS_GUI_SRCS}
+     editorwidgets/qgsqmlwidgetwrapper.cpp
+@@ -1489,21 +1484,6 @@
+ # require c++17
+ target_compile_features(qgis_gui PRIVATE cxx_std_17)
+ 
+-target_include_directories(qgis_gui SYSTEM PUBLIC
+-  ${QWT_INCLUDE_DIR}
+-  ${QSCINTILLA_INCLUDE_DIR}
+-)
+-
+-target_include_directories(qgis_gui SYSTEM PRIVATE
+-  ${QT_QTUITOOLS_INCLUDE_DIR}
+-)
+-
+-if (BUILD_WITH_QT6)
+-  target_include_directories(qgis_gui SYSTEM PRIVATE
+-    ${${QT_VERSION_BASE}Svg_INCLUDE_DIRS}
+-  )
+-endif()
+-
+ if (WITH_PDAL)
+   include_directories(SYSTEM ${PDAL_INCLUDE_DIR})
+   if(MSVC)
+@@ -1620,8 +1600,8 @@
+   qgis_core
+   qgis_native
+   ${QT_VERSION_BASE}::UiTools
+-  ${QWT_LIBRARY}
+-  ${QSCINTILLA_LIBRARY}
++  qwt::qwt
++  qscintilla::qscintilla
+   ${QT_VERSION_BASE}::QuickWidgets
+   ${QT_VERSION_BASE}::Multimedia
+   ${QT_VERSION_BASE}::MultimediaWidgets
+diff --color -Naur a/src/native/CMakeLists.txt b/src/native/CMakeLists.txt
+--- a/src/native/CMakeLists.txt	2023-04-28 14:11:34.000000000 +0200
++++ b/src/native/CMakeLists.txt	2023-06-06 01:53:15.018365720 +0200
+@@ -134,12 +134,9 @@
+   )
+ endif()
+ 
+-if (BUILD_WITH_QT6)
+-  target_link_libraries(qgis_native ${Qt6Core_LIBRARIES} ${Qt6Gui_LIBRARIES} "${NATIVE_LINK_LIBS}")
+-else()
+-  target_link_libraries(qgis_native ${Qt5Core_LIBRARIES} ${Qt5Gui_LIBRARIES} "${NATIVE_LINK_LIBS}")
+-endif()
+-
++target_link_libraries(qgis_native ${QT_VERSION_BASE}::Core ${QT_VERSION_BASE}::Gui "${NATIVE_LINK_LIBS}")
++  
++  
+ if (UNIX AND NOT APPLE AND NOT ANDROID)
+   target_link_libraries(qgis_native ${QT_VERSION_BASE}::DBus)
+ endif()
+diff --color -Naur a/src/plugins/offline_editing/CMakeLists.txt b/src/plugins/offline_editing/CMakeLists.txt
+--- a/src/plugins/offline_editing/CMakeLists.txt	2023-04-28 14:11:34.000000000 +0200
++++ b/src/plugins/offline_editing/CMakeLists.txt	2023-06-06 02:04:57.114093758 +0200
+@@ -36,7 +36,7 @@
+ target_link_libraries(plugin_offlineediting
+   qgis_core
+   qgis_gui
+-  ${SPATIALITE_LIBRARY}
++  spatialite::spacialite
+ )
+ 
+ include_directories(SYSTEM
+diff --color -Naur a/src/process/CMakeLists.txt b/src/process/CMakeLists.txt
+--- a/src/process/CMakeLists.txt	2023-04-28 14:11:34.000000000 +0200
++++ b/src/process/CMakeLists.txt	2023-06-06 01:22:09.492593690 +0200
+@@ -42,9 +42,9 @@
+   qgis_core
+   qgis_analysis
+   ${QT_VERSION_BASE}::Core
+-  ${PROJ_LIBRARY}
+-  ${GEOS_LIBRARY}
+-  ${GDAL_LIBRARY}
++  PROJ::proj
++  GEOS::geos
++  GDAL::GDAL
+ )
+ 
+ if (WITH_3D)
+diff --color -Naur a/src/providers/arcgisrest/CMakeLists.txt b/src/providers/arcgisrest/CMakeLists.txt
+--- a/src/providers/arcgisrest/CMakeLists.txt	2023-04-28 14:11:34.000000000 +0200
++++ b/src/providers/arcgisrest/CMakeLists.txt	2023-07-06 14:40:05.485122203 +0200
+@@ -33,7 +33,7 @@
+ 
+ target_link_libraries (provider_arcgisfeatureserver_a
+   qgis_core
+-  ${QCA_LIBRARY}
++  qca::qca
+ )
+ 
+ if (WITH_GUI)
+@@ -57,7 +57,7 @@
+ 
+   include_directories(SYSTEM
+     ${CMAKE_BINARY_DIR}/src/ui
+-    ${QSCINTILLA_INCLUDE_DIR}
++###    ${QSCINTILLA_INCLUDE_DIR}
+   )
+ 
+   add_dependencies(provider_arcgisfeatureserver_gui_a ui)
+@@ -74,7 +74,7 @@
+   
+   target_link_libraries(provider_arcgisfeatureserver
+     qgis_core
+-    ${QCA_LIBRARY}
++    qca::qca
+   )
+   
+   # require c++17
+@@ -110,7 +110,7 @@
+ 
+ target_link_libraries (provider_arcgismapserver_a
+   qgis_core
+-  ${QCA_LIBRARY}
++  qca::qca
+ )
+ 
+ if (FORCE_STATIC_LIBS)
+@@ -124,7 +124,7 @@
+   
+   target_link_libraries(provider_arcgismapserver
+     qgis_core
+-    ${QCA_LIBRARY}
++    qca::qca
+   )
+   
+   install (TARGETS provider_arcgismapserver
+diff --color -Naur a/src/providers/CMakeLists.txt b/src/providers/CMakeLists.txt
+--- a/src/providers/CMakeLists.txt	2023-04-28 14:11:34.000000000 +0200
++++ b/src/providers/CMakeLists.txt	2023-06-06 03:00:27.092824043 +0200
+@@ -6,7 +6,7 @@
+ add_subdirectory(wms)
+ add_subdirectory(wcs)
+ add_subdirectory(delimitedtext)
+-add_subdirectory(arcgisrest)
++###add_subdirectory(arcgisrest)
+ 
+ if (WITH_SPATIALITE)
+   add_subdirectory(spatialite)
+@@ -21,7 +21,7 @@
+ if (NOT FORCE_STATIC_LIBS)
+   add_subdirectory(mssql)
+   add_subdirectory(gpx)
+-  add_subdirectory(mdal)
++###  add_subdirectory(mdal)
+   if (WITH_ANALYSIS)
+     add_subdirectory(virtualraster)
+   endif()
+diff --color -Naur a/src/providers/gpx/CMakeLists.txt b/src/providers/gpx/CMakeLists.txt
+--- a/src/providers/gpx/CMakeLists.txt	2023-04-28 14:11:34.000000000 +0200
++++ b/src/providers/gpx/CMakeLists.txt	2023-06-06 01:39:08.872397282 +0200
+@@ -34,7 +34,7 @@
+ target_compile_features(provider_gpx PRIVATE cxx_std_17)
+ 
+ target_link_libraries(provider_gpx
+-  ${EXPAT_LIBRARY}
++  expat::expat
+   qgis_core
+ )
+ 
+diff --color -Naur a/src/providers/grass/CMakeLists.txt b/src/providers/grass/CMakeLists.txt
+--- a/src/providers/grass/CMakeLists.txt	2023-04-28 14:11:34.000000000 +0200
++++ b/src/providers/grass/CMakeLists.txt	2023-06-06 01:33:10.473829678 +0200
+@@ -214,14 +214,14 @@
+       target_link_libraries(qgis.d.rast${GRASS_BUILD_VERSION}
+         ${GRASS_LIBRARY${GRASS_BUILD_VERSION}_gis}
+         ${GRASS_LIBRARY${GRASS_BUILD_VERSION}_datetime}
+-        ${GDAL_LIBRARY}
++        GDAL::GDAL
+       )
+     else()
+       target_link_libraries(qgis.d.rast${GRASS_BUILD_VERSION}
+         ${GRASS_LIBRARY${GRASS_BUILD_VERSION}_gis}
+         ${GRASS_LIBRARY${GRASS_BUILD_VERSION}_datetime}
+         ${GRASS_LIBRARY${GRASS_BUILD_VERSION}_raster}
+-        ${GDAL_LIBRARY}
++	GDAL::GDAL
+       )
+     endif()
+ 
+@@ -234,7 +234,7 @@
+         ${GRASS_LIBRARY${GRASS_BUILD_VERSION}_gis}
+         ${GRASS_LIBRARY${GRASS_BUILD_VERSION}_datetime}
+         ${GRASS_LIBRARY${GRASS_BUILD_VERSION}_gproj}
+-        ${GDAL_LIBRARY}
++	GDAL::GDAL
+       )
+     else()
+       target_link_libraries(qgis.g.info${GRASS_BUILD_VERSION}
+@@ -242,7 +242,7 @@
+         ${GRASS_LIBRARY${GRASS_BUILD_VERSION}_datetime}
+         ${GRASS_LIBRARY${GRASS_BUILD_VERSION}_gproj}
+         ${GRASS_LIBRARY${GRASS_BUILD_VERSION}_raster}
+-        ${GDAL_LIBRARY}
++	GDAL::GDAL
+       )
+     endif()
+     if (UNIX)
+@@ -261,7 +261,7 @@
+         qgisgrass${GRASS_BUILD_VERSION}
+         ${GRASS_LIBRARY${GRASS_BUILD_VERSION}_gis}
+         ${GRASS_LIBRARY${GRASS_BUILD_VERSION}_datetime}
+-        ${GDAL_LIBRARY}
++	GDAL::GDAL
+         qgis_core
+       )
+     else()
+@@ -270,7 +270,7 @@
+         ${GRASS_LIBRARY${GRASS_BUILD_VERSION}_gis}
+         ${GRASS_LIBRARY${GRASS_BUILD_VERSION}_datetime}
+         ${GRASS_LIBRARY${GRASS_BUILD_VERSION}_raster}
+-        ${GDAL_LIBRARY}
++	GDAL::GDAL
+         qgis_core
+       )
+     endif()
+@@ -289,7 +289,7 @@
+       ${GRASS_LIBRARY${GRASS_BUILD_VERSION}_vect}
+       ${GRASS_LIBRARY${GRASS_BUILD_VERSION}_dbmibase}
+       ${GRASS_LIBRARY${GRASS_BUILD_VERSION}_dbmiclient}
+-      ${GDAL_LIBRARY}
++      GDAL::GDAL
+       qgis_core
+     )
+ 
+diff --color -Naur a/src/providers/hana/CMakeLists.txt b/src/providers/hana/CMakeLists.txt
+--- a/src/providers/hana/CMakeLists.txt	2023-04-28 14:11:34.000000000 +0200
++++ b/src/providers/hana/CMakeLists.txt	2023-06-06 01:46:25.877044766 +0200
+@@ -67,8 +67,6 @@
+ )
+ 
+ include_directories (SYSTEM
+-  ${PROJ_INCLUDE_DIR}
+-  ${GDAL_INCLUDE_DIR}
+   ${ODBC_INCLUDE_DIRS}
+   ${QCA_INCLUDE_DIR}
+   ${QTKEYCHAIN_INCLUDE_DIR}
+diff --color -Naur a/src/providers/mdal/CMakeLists.txt b/src/providers/mdal/CMakeLists.txt
+--- a/src/providers/mdal/CMakeLists.txt	2023-04-28 14:11:34.000000000 +0200
++++ b/src/providers/mdal/CMakeLists.txt	2023-06-06 01:26:54.607371656 +0200
+@@ -203,25 +203,19 @@
+ endif()
+ 
+ if (HDF5_FOUND)
+-  target_include_directories(provider_mdal PRIVATE ${HDF5_INCLUDE_DIRS})
+-  target_link_libraries(provider_mdal ${HDF5_C_LIBRARIES} )
+-  target_compile_definitions(provider_mdal PRIVATE ${HDF5_DEFINITIONS})
++  target_link_libraries(provider_mdal PRIVATE hdf5::hdf5 )
+ endif()
+ 
+ if (GDAL_FOUND)
+-  target_include_directories(provider_mdal PRIVATE ${GDAL_INCLUDE_DIR})
+-  target_link_libraries(provider_mdal ${GDAL_LIBRARY} )
++  target_link_libraries(provider_mdal PRIVATE GDAL::GDAL )
+ endif()
+ 
+ if (NETCDF_FOUND)
+-  target_include_directories(provider_mdal PRIVATE ${NETCDF_INCLUDE_DIR})
+-  target_link_libraries(provider_mdal ${NETCDF_LIBRARY} )
++  target_link_libraries(provider_mdal PRIVATE netCDF::netcdf )
+ endif()
+ 
+ if (LIBXML2_FOUND)
+-  target_include_directories(provider_mdal PRIVATE ${LIBXML2_INCLUDE_DIR})
+-  target_link_libraries(provider_mdal ${LIBXML2_LIBRARIES} )
+-  target_compile_definitions(provider_mdal PRIVATE ${LIBXML2_DEFINITIONS})
++  target_link_libraries(provider_mdal LibXml2::LibXml2 )
+ endif()
+ 
+ # clang-tidy
+diff --color -Naur a/src/providers/oracle/CMakeLists.txt b/src/providers/oracle/CMakeLists.txt
+--- a/src/providers/oracle/CMakeLists.txt	2023-04-28 14:11:34.000000000 +0200
++++ b/src/providers/oracle/CMakeLists.txt	2023-07-06 14:38:17.641346005 +0200
+@@ -38,15 +38,11 @@
+ 
+   ${CMAKE_BINARY_DIR}/src/ui
+ )
+-include_directories(SYSTEM
+-  ${GEOS_INCLUDE_DIR}
+-  ${QT_QTSQL_INCLUDEDIR}
+-)
+ 
+ if (WITH_GUI)
+-  include_directories(SYSTEM
+-    ${QSCINTILLA_INCLUDE_DIR}
+-  )
++###  include_directories(SYSTEM
++###    ${QSCINTILLA_INCLUDE_DIR}
++###  )
+ endif()
+ 
+ add_library (provider_oracle MODULE ${ORACLE_SRCS} ${ORACLE_HDRS})
+diff --color -Naur a/src/providers/pdal/CMakeLists.txt b/src/providers/pdal/CMakeLists.txt
+--- a/src/providers/pdal/CMakeLists.txt	2023-04-28 14:11:34.000000000 +0200
++++ b/src/providers/pdal/CMakeLists.txt	2023-06-06 02:32:07.618211682 +0200
+@@ -134,7 +134,8 @@
+ )
+ 
+ target_link_libraries (untwine
+-  ${PDAL_LIBRARIES}
++  PDAL::pdal_base
++  PDAL::pdal_util
+   Threads::Threads
+ )
+ target_include_directories(untwine PRIVATE ${UNTWINE_INCLUDE_DIRS})
+@@ -152,13 +153,15 @@
+ 
+ target_link_libraries (provider_pdal
+   qgis_core
+-  ${PDAL_LIBRARIES}
++  PDAL::pdal_base
++  PDAL::pdal_util
+   Threads::Threads
+ )
+ 
+ if (WITH_GUI)
+   target_link_libraries (provider_pdal
+-    ${PDAL_LIBRARIES}
++    PDAL::pdal_base
++    PDAL::pdal_util
+     ${QT_VERSION_BASE}::Xml
+     ${QT_VERSION_BASE}::Core
+     ${QT_VERSION_BASE}::Svg
+@@ -177,7 +180,8 @@
+ target_compile_features(provider_pdal_a PRIVATE cxx_std_17)
+ 
+ target_link_libraries (provider_pdal_a
+-  ${PDAL_LIBRARIES}
++  PDAL::pdal_base
++  PDAL::pdal_util
+   ${QT_VERSION_BASE}::Xml
+   ${QT_VERSION_BASE}::Core
+   ${QT_VERSION_BASE}::Svg
+@@ -194,7 +198,8 @@
+   target_compile_features(provider_pdal_gui_a PRIVATE cxx_std_17)
+ 
+   target_link_libraries (provider_pdal_gui_a
+-    ${PDAL_LIBRARIES}
++    PDAL::pdal_base
++    PDAL::pdal_util
+     ${QT_VERSION_BASE}::Xml
+     ${QT_VERSION_BASE}::Core
+     ${QT_VERSION_BASE}::Svg
+diff --color -Naur a/src/providers/postgres/CMakeLists.txt b/src/providers/postgres/CMakeLists.txt
+--- a/src/providers/postgres/CMakeLists.txt	2023-04-28 14:11:34.000000000 +0200
++++ b/src/providers/postgres/CMakeLists.txt	2023-07-06 14:31:51.550097690 +0200
+@@ -42,10 +42,6 @@
+ # static library
+ add_library (provider_postgres_a STATIC ${PG_SRCS} ${PG_HDRS})
+ 
+-target_include_directories(provider_postgres_a SYSTEM PUBLIC
+-  ${POSTGRES_INCLUDE_DIR}
+-)
+-
+ target_include_directories(provider_postgres_a PUBLIC
+   ${CMAKE_SOURCE_DIR}/src/providers/postgres
+ )
+@@ -55,7 +51,7 @@
+ 
+ target_link_libraries (provider_postgres_a
+   qgis_core
+-  ${POSTGRES_LIBRARY}
++  libpq::pq
+ )
+ 
+ if (WITH_GUI)
+@@ -67,10 +63,6 @@
+ 
+   add_library(provider_postgres_gui_a STATIC ${PG_GUI_SRCS} ${PG_UIS_H})
+ 
+-  target_include_directories(provider_postgres_gui_a SYSTEM PRIVATE
+-    ${POSTGRES_INCLUDE_DIR}
+-  )
+-
+   target_include_directories(provider_postgres_gui_a PUBLIC
+     ${CMAKE_BINARY_DIR}/src/providers/postgres
+   )
+@@ -81,7 +73,7 @@
+   target_link_libraries(provider_postgres_gui_a
+     qgis_gui
+     provider_postgres_a
+-    ${POSTGRES_LIBRARY}
++    libpq::pq
+   )
+   add_dependencies(provider_postgres_gui_a ui)
+ endif()
+@@ -101,9 +93,6 @@
+ # static library
+ add_library (provider_postgresraster_a STATIC ${PGRASTER_SRCS} ${PG_HDRS})
+ 
+-target_include_directories(provider_postgresraster_a SYSTEM PRIVATE
+-  ${POSTGRES_INCLUDE_DIR}
+-)
+ target_include_directories(provider_postgresraster_a PUBLIC
+   ${CMAKE_SOURCE_DIR}/src/providers/postgres/raster
+ )
+@@ -114,7 +103,7 @@
+ target_link_libraries (provider_postgresraster_a
+     qgis_core
+     provider_postgres_a
+-    ${POSTGRES_LIBRARY}
++
+ )
+ 
+ if (WITH_GUI)
+@@ -138,12 +127,6 @@
+   add_library(provider_postgres MODULE ${PG_SRCS} ${PG_GUI_SRCS} ${PG_HDRS})
+   add_library(provider_postgresraster MODULE ${PGRASTER_SRCS} ${PG_HDRS})
+ 
+-  target_include_directories(provider_postgres SYSTEM PRIVATE
+-    ${POSTGRES_INCLUDE_DIR}
+-  )
+-  target_include_directories(provider_postgresraster SYSTEM PRIVATE
+-    ${POSTGRES_INCLUDE_DIR}
+-  )
+   target_include_directories(provider_postgresraster PRIVATE
+     ${CMAKE_SOURCE_DIR}/src/providers/postgres
+   )
+@@ -154,12 +137,12 @@
+ 
+   target_link_libraries(provider_postgres
+     qgis_core
+-    ${POSTGRES_LIBRARY}
++    libpq::pq
+   )
+ 
+   target_link_libraries(provider_postgresraster
+     qgis_core
+-    ${POSTGRES_LIBRARY}
++    libpq::pq
+   )
+ 
+   if (WITH_GUI)
+diff --color -Naur a/src/providers/spatialite/CMakeLists.txt b/src/providers/spatialite/CMakeLists.txt
+--- a/src/providers/spatialite/CMakeLists.txt	2023-04-28 14:11:34.000000000 +0200
++++ b/src/providers/spatialite/CMakeLists.txt	2023-07-06 14:41:14.048977799 +0200
+@@ -38,7 +38,7 @@
+ 
+ target_link_libraries(provider_spatialite_a
+   qgis_core
+-  ${SPATIALITE_LIBRARY}
++  libspatialite::libspatialite
+ )
+ 
+ # require c++17
+@@ -74,7 +74,7 @@
+   add_dependencies(provider_spatialite_gui_a ui)
+ 
+   include_directories(SYSTEM
+-    ${QSCINTILLA_INCLUDE_DIR}
++###    ${QSCINTILLA_INCLUDE_DIR}
+     ${CMAKE_BINARY_DIR}/src/ui
+   )
+ endif()
+@@ -95,7 +95,7 @@
+   
+   target_link_libraries(provider_spatialite
+     qgis_core
+-    ${SPATIALITE_LIBRARY}
++    libspatialite::libspatialite
+   )
+ 
+   if (WITH_GUI)
+diff --color -Naur a/src/providers/virtual/CMakeLists.txt b/src/providers/virtual/CMakeLists.txt
+--- a/src/providers/virtual/CMakeLists.txt	2023-04-28 14:11:34.000000000 +0200
++++ b/src/providers/virtual/CMakeLists.txt	2023-06-06 01:29:29.802727993 +0200
+@@ -40,8 +40,8 @@
+ 
+ target_link_libraries(provider_virtuallayer_a
+   qgis_core
+-  ${SQLITE3_LIBRARY}
+-  ${SPATIALITE_LIBRARY}
++  SQLite::SQLite3
++  libspatialite::libspatialite
+ )
+ 
+ # require c++17
+@@ -97,8 +97,8 @@
+     qgis_core
+     ${QT_VERSION_BASE}::Core
+     ${QT_VERSION_BASE}::Widgets
+-    ${SQLITE3_LIBRARY}
+-    ${SPATIALITE_LIBRARY}
++    SQLite::SQLite3
++    libspatialite::libspatialite
+   )
+ 
+   if (WITH_GUI)
+diff --color -Naur a/src/providers/wfs/CMakeLists.txt b/src/providers/wfs/CMakeLists.txt
+--- a/src/providers/wfs/CMakeLists.txt	2023-04-28 14:11:34.000000000 +0200
++++ b/src/providers/wfs/CMakeLists.txt	2023-07-06 14:41:33.568936415 +0200
+@@ -93,7 +93,7 @@
+   add_dependencies(provider_wfs_gui_a ui)
+ 
+   include_directories(SYSTEM
+-    ${QSCINTILLA_INCLUDE_DIR}
++###    ${QSCINTILLA_INCLUDE_DIR}
+     ${CMAKE_BINARY_DIR}/src/ui
+   )
+ endif()
+diff --color -Naur a/src/providers/wms/CMakeLists.txt b/src/providers/wms/CMakeLists.txt
+--- a/src/providers/wms/CMakeLists.txt	2023-04-28 14:11:34.000000000 +0200
++++ b/src/providers/wms/CMakeLists.txt	2023-06-06 01:41:55.695737416 +0200
+@@ -80,7 +80,7 @@
+ 
+   target_link_libraries(provider_wms
+     qgis_core
+-    ${GDAL_LIBRARY}  # for OGR_G_CreateGeometryFromJson()
++    GDAL::GDAL  # for OGR_G_CreateGeometryFromJson()
+   )
+ 
+   if (WITH_GUI)
+diff --color -Naur a/src/server/CMakeLists.txt b/src/server/CMakeLists.txt
+--- a/src/server/CMakeLists.txt	2023-04-28 14:11:34.000000000 +0200
++++ b/src/server/CMakeLists.txt	2023-06-06 01:54:35.438446858 +0200
+@@ -113,11 +113,11 @@
+ 
+ target_link_libraries(qgis_server
+   qgis_core
+-  ${PROJ_LIBRARY}
++  PROJ::proj
+   ${FCGI_LIBRARY}
+   ${POSTGRES_LIBRARY}
+-  ${GDAL_LIBRARY}
+-  ${QCA_LIBRARY}
++  GDAL::GDAL
++  gca::gca
+ )
+ 
+ if (WITH_ANALYSIS)
+diff --color -Naur a/tests/src/3d/sandbox/CMakeLists.txt b/tests/src/3d/sandbox/CMakeLists.txt
+--- a/tests/src/3d/sandbox/CMakeLists.txt	2023-04-28 14:11:34.000000000 +0200
++++ b/tests/src/3d/sandbox/CMakeLists.txt	2023-06-06 01:18:06.025700844 +0200
+@@ -37,9 +37,9 @@
+   ${QT_VERSION_BASE}::Svg
+   ${QT_VERSION_BASE}::Network
+   ${QT_VERSION_BASE}::Test
+-  ${PROJ_LIBRARY}
+-  ${GEOS_LIBRARY}
+-  ${GDAL_LIBRARY}
++  PROJ::proj
++  GEOS::geos
++  GDAL::GDAL
+   ${QWT_LIBRARY}
+   qgis_core
+   qgis_3d
+diff --color -Naur a/tests/src/analysis/CMakeLists.txt b/tests/src/analysis/CMakeLists.txt
+--- a/tests/src/analysis/CMakeLists.txt	2023-04-28 14:11:34.000000000 +0200
++++ b/tests/src/analysis/CMakeLists.txt	2023-07-06 17:45:26.447363211 +0200
+@@ -11,10 +11,6 @@
+   ${CMAKE_SOURCE_DIR}/src/test
+ )
+ 
+-if(HAVE_OPENCL)
+-    include_directories(SYSTEM ${OpenCL_INCLUDE_DIRS})
+-endif()
+-
+ #############################################################
+ # Tests:
+ set(TESTS
+diff --color -Naur a/tests/src/core/CMakeLists.txt b/tests/src/core/CMakeLists.txt
+--- a/tests/src/core/CMakeLists.txt	2023-04-28 14:11:34.000000000 +0200
++++ b/tests/src/core/CMakeLists.txt	2023-07-06 17:45:12.843358262 +0200
+@@ -8,10 +8,6 @@
+   ${CMAKE_SOURCE_DIR}/src/test
+ )
+ 
+-if(HAVE_OPENCL)
+-    include_directories(SYSTEM ${OpenCL_INCLUDE_DIRS})
+-endif()
+-
+ if (WITH_PDAL)
+     include_directories(SYSTEM "${PDAL_INCLUDE_DIR}")
+ endif()
+diff --color -Naur a/tests/src/providers/grass/CMakeLists.txt b/tests/src/providers/grass/CMakeLists.txt
+--- a/tests/src/providers/grass/CMakeLists.txt	2023-04-28 14:11:34.000000000 +0200
++++ b/tests/src/providers/grass/CMakeLists.txt	2023-06-06 01:06:57.501022326 +0200
+@@ -1,13 +1,8 @@
+ include_directories(
+   ${CMAKE_SOURCE_DIR}/src/providers/grass
+ )
+-include_directories(BEFORE SYSTEM
+-  ${PROJ_INCLUDE_DIR}
+-  ${GDAL_INCLUDE_DIR}
+-)
+ include_directories(SYSTEM
+   ${POSTGRES_INCLUDE_DIR}
+-  ${GEOS_INCLUDE_DIR}
+ )
+ 
+ 
+@@ -29,9 +24,9 @@
+     ${QT_VERSION_BASE}::Core
+     ${QT_VERSION_BASE}::Svg
+     ${QT_VERSION_BASE}::Test
+-    ${PROJ_LIBRARY}
+-    ${GEOS_LIBRARY}
+-    ${GDAL_LIBRARY}
++    PROJ::proj
++    GEOS::geos
++    GDAL::GDAL
+     qgis_core
+     qgis_test
+     qgisgrass${grass_build_version}

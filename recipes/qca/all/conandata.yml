@@ -1,0 +1,8 @@
+sources:
+  "2.3.6":
+    url:
+    - "https://invent.kde.org/libraries/qca/-/archive/v2.3.6/qca-v2.3.6.tar.bz2"
+    sha256: "6d651007d397f46e07325c351793c1d006edd7cbf9bec463082815ceebaa8736"
+patches:
+  "2.3.6":
+    - patch_file: "patches/fix-cmake-2.3.6.patch"
