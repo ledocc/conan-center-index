@@ -1,0 +1,7 @@
+sources:
+  "3.8.3":
+    url: "https://github.com/qgis/QGIS/archive/refs/tags/final-3_8_3.tar.gz"
+    sha256: "19dd5adc27e46b638fa89458cf14f1cf32bcffdf70b94e08fecf06623784b239"
+patches:
+  "3.8.3":
+    - patch_file: "patches/fix-cmake-3.8.3.patch"

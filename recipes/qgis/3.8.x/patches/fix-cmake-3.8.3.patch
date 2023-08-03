@@ -1,0 +1,1773 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 9cd51bce35..7ebcf520f7 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -40,25 +40,9 @@ ELSE (${CMAKE_HOST_SYSTEM_NAME} MATCHES "BSD$")
+   OPTION(USE_OPENCL "Use OpenCL" ON)
+ ENDIF (${CMAKE_HOST_SYSTEM_NAME} MATCHES "BSD$")
+ IF (USE_OPENCL)
+-    FIND_PACKAGE(OpenCL)
+-    IF(${OpenCL_FOUND})
+-        SET(HAVE_OPENCL TRUE)
+-        # Fixup for standard FindOpenCL module not assinging proper framework headers directory
+-        IF (APPLE AND "${OpenCL_INCLUDE_DIR}" MATCHES "OpenCL\\.framework/?$")
+-            SET(OpenCL_INCLUDE_DIR "${OpenCL_INCLUDE_DIR}/Headers" CACHE PATH "" FORCE)
+-            SET(OpenCL_INCLUDE_DIRS ${OpenCL_INCLUDE_DIR})
+-        ENDIF ()
+-        FIND_PACKAGE(OpenCLhpp)
+-        IF(NOT OPENCL_HPP_FOUND)
+-            # Use internal headers copied from OpenCL-CLHPP project
+-            SET(OPENCL_HPP_INCLUDE_DIR ${CMAKE_SOURCE_DIR}/external/opencl-clhpp/include CACHE PATH "" FORCE)
+-            MESSAGE(STATUS "Couldn't find OpenCL C++ headers, using internal: ${OPENCL_HPP_INCLUDE_DIR}")
+-        ENDIF(NOT OPENCL_HPP_FOUND)
+-        SET(OpenCL_INCLUDE_DIRS ${OpenCL_INCLUDE_DIRS} ${OPENCL_HPP_INCLUDE_DIR})
+-    ELSE(${OpenCL_FOUND})
+-        MESSAGE(STATUS "Couldn't find OpenCL: support DISABLED")
+-    ENDIF(${OpenCL_FOUND})
+-ENDIF(USE_OPENCL)
++    FIND_PACKAGE(OpenCL REQUIRED)
++    FIND_PACKAGE(OpenCLHeadersCpp REQUIRED)
++ENDIF()
+ 
+ # Configure CCache if available
+ IF(NOT MSVC)
+@@ -298,24 +282,27 @@ IF(WITH_CORE)
+ 
+   # required
+   FIND_PACKAGE(Proj)
++  ADD_DEFINITIONS(-DPROJ_VERSION_MAJOR=${Proj_VERSION_MAJOR})
++
+   FIND_PACKAGE(GEOS)
+   FIND_PACKAGE(GDAL)
+   FIND_PACKAGE(Expat REQUIRED)
+-  FIND_PACKAGE(Spatialindex REQUIRED)
++  FIND_PACKAGE(libspatialindex REQUIRED)
++  FIND_PACKAGE(libspatialite REQUIRED)
+   IF (WITH_GUI)
+     FIND_PACKAGE(Qwt REQUIRED)
+   ENDIF (WITH_GUI)
+   FIND_PACKAGE(LibZip REQUIRED)
+ 
+-  FIND_PACKAGE(Sqlite3)
+-  IF (NOT SQLITE3_FOUND)
+-    MESSAGE (SEND_ERROR "sqlite3 dependency was not found!")
+-  ENDIF (NOT SQLITE3_FOUND)
++  FIND_PACKAGE(SQLite3 REQUIRED)
++#  IF (NOT SQLITE3_FOUND)
++#    MESSAGE (SEND_ERROR "sqlite3 dependency was not found!")
++#  ENDIF (NOT SQLITE3_FOUND)
+ 
+   # optional
+-  IF (WITH_POSTGRESQL)
++  IF(WITH_POSTGRESQL)
+     FIND_PACKAGE(Postgres) # PostgreSQL provider
+-  ENDIF (WITH_POSTGRESQL)
++  ENDIF()
+ 
+   IF (NOT WITH_INTERNAL_MDAL)
+     FIND_PACKAGE(MDAL REQUIRED) # MDAL provider
+@@ -323,9 +310,9 @@ IF(WITH_CORE)
+ 
+   FIND_PACKAGE(SpatiaLite REQUIRED)
+ 
+-  IF (NOT PROJ_FOUND OR NOT GEOS_FOUND OR NOT GDAL_FOUND)
+-    MESSAGE (SEND_ERROR "Some dependencies were not found! Proj: ${PROJ_FOUND}, Geos: ${GEOS_FOUND}, GDAL: ${GDAL_FOUND}")
+-  ENDIF (NOT PROJ_FOUND OR NOT GEOS_FOUND OR NOT GDAL_FOUND)
++  IF (NOT Proj_FOUND OR NOT GEOS_FOUND OR NOT GDAL_FOUND)
++    MESSAGE (SEND_ERROR "Some dependencies were not found! Proj: ${Proj_FOUND}, Geos: ${GEOS_FOUND}, GDAL: ${GDAL_FOUND}")
++  ENDIF ()
+ 
+   IF (POSTGRES_FOUND)
+     # following variable is used in qgsconfig.h
+@@ -346,33 +333,45 @@ IF(WITH_CORE)
+   # Use Qt5SerialPort optionally for GPS
+   SET (WITH_QT5SERIALPORT TRUE CACHE BOOL "Determines whether Qt5SerialPort should be tried for GPS positioning")
+   IF (WITH_QT5SERIALPORT)
+-      FIND_PACKAGE(Qt5SerialPort REQUIRED)
++      FIND_PACKAGE(Qt5 REQUIRED COMPONENTS SerialPort)
+       # following variable is used in qgsconfig.h
+       SET (HAVE_QT5SERIALPORT TRUE)
+   ENDIF(WITH_QT5SERIALPORT)
+ 
+-  FIND_PACKAGE(Qt5Core QUIET)
+-  FIND_PACKAGE(Qt5Gui REQUIRED)
+-  FIND_PACKAGE(Qt5Widgets REQUIRED)
+-  FIND_PACKAGE(Qt5Network REQUIRED)
+-  FIND_PACKAGE(Qt5Xml REQUIRED)
+-  FIND_PACKAGE(Qt5Svg REQUIRED)
+-  FIND_PACKAGE(Qt5Concurrent REQUIRED)
+-  FIND_PACKAGE(Qt5PrintSupport REQUIRED)
+-  FIND_PACKAGE(Qt5Positioning)
++  FIND_PACKAGE(Qt5 REQUIRED
++      COMPONENTS
++          Core
++          Gui
++          Widgets
++          Network
++          Xml
++          Svg
++          Concurrent
++          PrintSupport
++          Positioning
++  )
+   IF (WITH_QTWEBKIT)
+-    FIND_PACKAGE(Qt5WebKit REQUIRED)
+-    FIND_PACKAGE(Qt5WebKitWidgets REQUIRED)
++      FIND_PACKAGE(Qt5 REQUIRED
++          COMPONENT
++              WebKit
++              WebKitWidgets
++          )
+   ENDIF(WITH_QTWEBKIT)
+-  FIND_PACKAGE(Qt5Test REQUIRED)
+-  FIND_PACKAGE(Qt5UiTools REQUIRED)
+-  FIND_PACKAGE(Qt5Sql REQUIRED)
++  FIND_PACKAGE(Qt5 REQUIRED
++      COMPONENTS
++          Test
++          UiTools
++          Sql
++  )
+   IF (WITH_3D)
+-    FIND_PACKAGE(Qt53DCore REQUIRED)
+-    FIND_PACKAGE(Qt53DRender REQUIRED)
+-    FIND_PACKAGE(Qt53DInput REQUIRED)
+-    FIND_PACKAGE(Qt53DLogic REQUIRED)
+-    FIND_PACKAGE(Qt53DExtras REQUIRED)
++      FIND_PACKAGE(Qt5 REQUIRED
++          COMPONENTS
++              3DCore
++              3DRender
++              3DInput
++              3DLogic
++              3DExtras
++      )
+     SET(HAVE_3D TRUE)  # used in qgsconfig.h
+   ENDIF (WITH_3D)
+   IF (APPLE)
+@@ -381,12 +380,15 @@ IF(WITH_CORE)
+   INCLUDE("cmake/modules/ECMQt4To5Porting.cmake")
+   MESSAGE(STATUS "Found Qt version: ${Qt5Core_VERSION_STRING}")
+   IF (WITH_QUICK)
+-    FIND_PACKAGE(Qt5Qml REQUIRED)
+-    FIND_PACKAGE(Qt5Quick REQUIRED)
++      FIND_PACKAGE(Qt5 REQUIRED
++          COMPONENTS
++              Qml
++              Quick
++      )
+     IF(${CMAKE_SYSTEM_NAME} MATCHES "Android")
+-        FIND_PACKAGE(Qt5AndroidExtras)
++        FIND_PACKAGE(Qt5 COMPONENTS AndroidExtras)
+     ELSE(${CMAKE_SYSTEM_NAME} MATCHES "Android")
+-        FIND_PACKAGE(QtQmlTools)
++        FIND_PACKAGE(Qt5  COMPONENTS QmlTools)
+     ENDIF(${CMAKE_SYSTEM_NAME} MATCHES "Android")
+ 
+     # following variable is used in qgsconfig.h
+@@ -409,7 +411,7 @@ IF(WITH_CORE)
+   # Password helper
+   FIND_PACKAGE(QtKeychain REQUIRED)
+   # Master password hash and authentication encryption
+-  FIND_PACKAGE(QCA REQUIRED)
++  FIND_PACKAGE(Qca REQUIRED)
+   # Check for runtime dependency of qca-ossl plugin
+   # REQUIRED if unit tests are to be run from build directory
+   IF(NOT MSVC)
+diff --git a/external/o2/src/CMakeLists.txt b/external/o2/src/CMakeLists.txt
+index 36b08a95e6..b8070f6d62 100644
+--- a/external/o2/src/CMakeLists.txt
++++ b/external/o2/src/CMakeLists.txt
+@@ -161,8 +161,7 @@ if(o2_WITH_KEYCHAIN)
+     endif()
+     if(QTKEYCHAIN_FOUND OR QT5KEYCHAIN_FOUND)
+         MESSAGE("Found QTKeychain")
+-        list(APPEND LINK_TARGETS ${QTKEYCHAIN_LIBRARY})
+-        include_directories(${QTKEYCHAIN_INCLUDE_DIR})
++        list(APPEND LINK_TARGETS qtkeychain::qtkeychain)
+         set( o2_SRCS
+                 ${o2_SRCS}
+                 o0keychainstore.cpp
+diff --git a/external/qspatialite/CMakeLists.txt b/external/qspatialite/CMakeLists.txt
+index 82aaeedb2a..5e0fddfc68 100644
+--- a/external/qspatialite/CMakeLists.txt
++++ b/external/qspatialite/CMakeLists.txt
+@@ -1,25 +1,19 @@
+ SET(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${QGIS_OUTPUT_DIRECTORY}/${QGIS_PLUGIN_SUBDIR}/sqldrivers)
+ SET(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${QGIS_OUTPUT_DIRECTORY}/${QGIS_PLUGIN_SUBDIR}/sqldrivers)
+ 
+-ADD_DEFINITIONS(${QT_DEFINITIONS})
+ ADD_DEFINITIONS(-DQT_PLUGIN)
+ ADD_DEFINITIONS(-DQT_NO_DEBUG)
+ ADD_DEFINITIONS(-DQT_SHARED)
+ 
+-INCLUDE_DIRECTORIES(SYSTEM
+-	${SQLITE3_INCLUDE_DIR}
+-	${Qt5Sql_PRIVATE_INCLUDE_DIRS}
+-)
+-
+ SET(QSQLSPATIALITE_SRC qsql_spatialite.cpp smain.cpp)
+ QT5_WRAP_CPP(QSQLSPATIALITE_SRC qsql_spatialite.h smain.h)
+ 
+ ADD_LIBRARY(qsqlspatialite SHARED ${QSQLSPATIALITE_SRC})
+ TARGET_LINK_LIBRARIES(qsqlspatialite
+-        ${Qt5Core_LIBRARIES}
+-        ${Qt5Sql_LIBRARIES}
+-	${SQLITE3_LIBRARY}
+-	${SPATIALITE_LIBRARY}
++    Qt5::Core
++    Qt5::Sql
++	SQLite::SQLite3
++	spatialite::spatialite
+ 	qgis_core
+ )
+ 
+diff --git a/postinstall/CMakeLists.txt b/postinstall/CMakeLists.txt
+index 9aefab5cab..622dc5bc64 100644
+--- a/postinstall/CMakeLists.txt
++++ b/postinstall/CMakeLists.txt
+@@ -9,4 +9,4 @@ ELSE(MSVC AND NOT USING_NMAKE)
+ ENDIF(MSVC AND NOT USING_NMAKE)
+ 
+ CONFIGURE_FILE("PostInstall.cmake.in" "PostInstall.cmake" @ONLY)
+-INSTALL(SCRIPT "${CMAKE_BINARY_DIR}/postinstall/PostInstall.cmake")
++#INSTALL(SCRIPT "${CMAKE_BINARY_DIR}/postinstall/PostInstall.cmake")
+diff --git a/src/3d/CMakeLists.txt b/src/3d/CMakeLists.txt
+index 25764e55c9..5e433c2ccd 100644
+--- a/src/3d/CMakeLists.txt
++++ b/src/3d/CMakeLists.txt
+@@ -167,12 +167,6 @@ INCLUDE_DIRECTORIES(
+   ${CMAKE_BINARY_DIR}/src/core
+   ${CMAKE_BINARY_DIR}/src/3d
+ )
+-INCLUDE_DIRECTORIES(SYSTEM
+-  ${GEOS_INCLUDE_DIR}
+-  ${GDAL_INCLUDE_DIR}
+-  ${SQLITE3_INCLUDE_DIR}
+-  ${QT5_3DEXTRA_INCLUDE_DIR}
+-)
+ 
+ #############################################################
+ # qgis_3d library
+diff --git a/src/analysis/CMakeLists.txt b/src/analysis/CMakeLists.txt
+index adcdf05e93..cb90120ce7 100644
+--- a/src/analysis/CMakeLists.txt
++++ b/src/analysis/CMakeLists.txt
+@@ -212,10 +212,8 @@ SET(QGIS_ANALYSIS_MOC_HDRS
+   vector/geometry_checker/qgsgeometrymissingvertexcheck.h
+ )
+ 
+-FIND_PACKAGE(EXIV2 REQUIRED)
++FIND_PACKAGE(exiv2 REQUIRED)
+ 
+-INCLUDE_DIRECTORIES(SYSTEM ${SPATIALITE_INCLUDE_DIR})
+-INCLUDE_DIRECTORIES(SYSTEM ${SQLITE3_INCLUDE_DIR})
+ INCLUDE_DIRECTORIES(BEFORE raster)
+ INCLUDE_DIRECTORIES(BEFORE mesh)
+ 
+@@ -363,19 +361,6 @@ INCLUDE_DIRECTORIES(
+   interpolation
+   network
+ )
+-INCLUDE_DIRECTORIES(SYSTEM
+-  ${SPATIALINDEX_INCLUDE_DIR} # before GEOS for case-insensitive filesystems
+-  ${GEOS_INCLUDE_DIR}
+-  ${GDAL_INCLUDE_DIR}
+-  ${SQLITE3_INCLUDE_DIR}
+-  ${EXIV2_INCLUDE_DIR}
+-)
+-
+-IF(HAVE_OPENCL)
+-    INCLUDE_DIRECTORIES(SYSTEM ${OpenCL_INCLUDE_DIRS})
+-ENDIF(HAVE_OPENCL)
+-
+-
+ 
+ #############################################################
+ # qgis_analysis library
+@@ -429,13 +414,9 @@ ENDIF (NOT ANDROID)
+ TARGET_LINK_LIBRARIES(
+   qgis_analysis
+   qgis_core
+-  ${EXIV2_LIBRARY}
++  exiv2::exiv2
+   )
+ 
+-IF(HAVE_OPENCL)
+-    TARGET_LINK_LIBRARIES(qgis_analysis ${OpenCL_LIBRARIES})
+-ENDIF(HAVE_OPENCL)
+-
+ TARGET_COMPILE_DEFINITIONS(qgis_analysis PRIVATE "-DQT_NO_FOREACH")
+ 
+ # clang-tidy
+diff --git a/src/analysis/interpolation/qgsinterpolator.h b/src/analysis/interpolation/qgsinterpolator.h
+index 35343ccdf7..5d69441829 100644
+--- a/src/analysis/interpolation/qgsinterpolator.h
++++ b/src/analysis/interpolation/qgsinterpolator.h
+@@ -19,6 +19,7 @@
+ #define QGSINTERPOLATOR_H
+ 
+ #include <QVector>
++#include <QList>
+ #include "qgis_sip.h"
+ #include "qgis_analysis.h"
+ 
+diff --git a/src/app/CMakeLists.txt b/src/app/CMakeLists.txt
+index c945155285..9d57ba0fdf 100644
+--- a/src/app/CMakeLists.txt
++++ b/src/app/CMakeLists.txt
+@@ -725,17 +725,8 @@ IF (WITH_3D)
+     ${CMAKE_SOURCE_DIR}/src/3d/chunks
+     ${CMAKE_BINARY_DIR}/src/3d
+   )
+-  INCLUDE_DIRECTORIES(SYSTEM
+-    ${QT5_3DEXTRA_INCLUDE_DIR}
+-  )
+ ENDIF (WITH_3D)
+ 
+-INCLUDE_DIRECTORIES(SYSTEM
+-  ${QWT_INCLUDE_DIR}
+-  ${QT_QTUITOOLS_INCLUDE_DIR}
+-  ${QSCINTILLA_INCLUDE_DIR}
+-  ${CMAKE_SOURCE_DIR}/external/qt-unix-signals
+-)
+ INCLUDE_DIRECTORIES(
+   ../analysis/processing
+   ../analysis/raster
+@@ -774,20 +765,6 @@ INCLUDE_DIRECTORIES(
+   ${CMAKE_SOURCE_DIR}/src/native
+   ${CMAKE_BINARY_DIR}/src/native
+ )
+-INCLUDE_DIRECTORIES(SYSTEM
+-  ${PROJ_INCLUDE_DIR}
+-  ${GDAL_INCLUDE_DIR}
+-  ${SPATIALITE_INCLUDE_DIR}
+-  ${SQLITE3_INCLUDE_DIR}
+-  ${GEOS_INCLUDE_DIR}
+-  ${QWTPOLAR_INCLUDE_DIR}
+-  ${QCA_INCLUDE_DIR}
+-  ${QTKEYCHAIN_INCLUDE_DIR}
+-)
+-
+-IF(HAVE_OPENCL)
+-    INCLUDE_DIRECTORIES(SYSTEM ${OpenCL_INCLUDE_DIRS})
+-ENDIF(HAVE_OPENCL)
+ 
+ IF(ENABLE_MODELTEST)
+   INCLUDE_DIRECTORIES(../../tests/qt_modeltest)
+@@ -801,10 +778,6 @@ IF (APPLE)
+   INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/src/native/mac)
+ ENDIF (APPLE)
+ 
+-IF (POSTGRES_FOUND)
+-  INCLUDE_DIRECTORIES(SYSTEM ${POSTGRES_INCLUDE_DIR})
+-ENDIF (POSTGRES_FOUND)
+-
+ #############
+ IF (ANDROID)
+   ADD_LIBRARY(${QGIS_APP_NAME} SHARED ${QGIS_APPMAIN_SRCS})
+@@ -817,14 +790,14 @@ ENDIF (ANDROID)
+ ADD_LIBRARY(qgis_app SHARED ${QGIS_APP_SRCS} ${QGIS_APP_MOC_SRCS} ${QGIS_APP_HDRS} ${QGIS_APP_MOC_HDRS})
+ 
+ TARGET_LINK_LIBRARIES(qgis_app
+-  ${QWT_LIBRARY}
+-  ${Qt5Sql_LIBRARIES}
+-  ${Qt5UiTools_LIBRARIES}
+-  ${OPTIONAL_QTWEBKIT}
++  Qwt::qwt
++  Qt5::Sql
++  Qt5::UiTools
++    ${OPTIONAL_QTWEBKIT}
+   #should only be needed for win
+   ${QT_QTMAIN_LIBRARY}
+   ${QWTPOLAR_LIBRARY}
+-  ${GDAL_LIBRARY}
++  GDAL::gdal
+   qgis_core
+   qgis_gui
+   qgis_analysis
+@@ -835,7 +808,7 @@ TARGET_LINK_LIBRARIES(qgis_app
+ TARGET_COMPILE_DEFINITIONS(qgis_app PRIVATE "-DQT_NO_FOREACH")
+ 
+ IF(ENABLE_MODELTEST)
+-  TARGET_LINK_LIBRARIES(qgis_app ${Qt5Test_LIBRARIES})
++  TARGET_LINK_LIBRARIES(qgis_app Qt5::Test)
+ ENDIF(ENABLE_MODELTEST)
+ 
+ IF (WITH_3D)
+@@ -892,7 +865,7 @@ ENDIF(WIN32)
+ TARGET_LINK_LIBRARIES(${QGIS_APP_NAME} qgis_native)
+ 
+ IF (NOT WIN32)
+-TARGET_LINK_LIBRARIES(${QGIS_APP_NAME} QTSignal)
++    TARGET_LINK_LIBRARIES(${QGIS_APP_NAME} QTSignal)
+ ENDIF (NOT WIN32)
+ 
+ IF (APPLE)
+@@ -908,7 +881,7 @@ IF (CMAKE_SYSTEM_NAME STREQUAL "FreeBSD")
+ ENDIF (CMAKE_SYSTEM_NAME STREQUAL "FreeBSD")
+ 
+ IF (POSTGRES_FOUND)
+-  TARGET_LINK_LIBRARIES (qgis_app ${POSTGRES_LIBRARY})
++  TARGET_LINK_LIBRARIES (qgis_app libpq::pq)
+ ENDIF (POSTGRES_FOUND)
+ 
+ IF(MSVC)
+diff --git a/src/core/CMakeLists.txt b/src/core/CMakeLists.txt
+index 7fe06824da..79c304a8bb 100644
+--- a/src/core/CMakeLists.txt
++++ b/src/core/CMakeLists.txt
+@@ -549,7 +549,7 @@ SET(QGIS_CORE_SRCS
+ 
+ FILE(GLOB JSON_HELP_FILES "${CMAKE_SOURCE_DIR}/resources/function_help/json/*")
+ IF(NOT USING_NINJA)
+-  STRING(REPLACE "$" "$$" JSON_HELP_FILES "${JSON_HELP_FILES}")
++  STRING(REPLACE "$" "\$" JSON_HELP_FILES "${JSON_HELP_FILES}")
+ ENDIF(NOT USING_NINJA)
+ STRING(REPLACE "\(" "\\(" JSON_HELP_FILES "${JSON_HELP_FILES}")
+ STRING(REPLACE "\)" "\\)" JSON_HELP_FILES "${JSON_HELP_FILES}")
+@@ -580,11 +580,11 @@ IF (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+   SET_SOURCE_FILES_PROPERTIES(qgsspatialindex.cpp PROPERTIES COMPILE_FLAGS -Wno-overloaded-virtual)
+ ENDIF (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+ 
+-IF (QT_MOBILITY_LOCATION_FOUND OR Qt5Positioning_FOUND)
++IF (QT_MOBILITY_LOCATION_FOUND OR TARGET Qt5::Positioning)
+   SET(QGIS_CORE_SRCS ${QGIS_CORE_SRCS}
+     gps/qgsqtlocationconnection.cpp
+   )
+-ENDIF (QT_MOBILITY_LOCATION_FOUND OR Qt5Positioning_FOUND)
++ENDIF ()
+ 
+ ADD_FLEX_FILES(QGIS_CORE_SRCS qgsexpressionlexer.ll qgssqlstatementlexer.ll)
+ ADD_BISON_FILES(QGIS_CORE_SRCS qgsexpressionparser.yy qgssqlstatementparser.yy)
+@@ -799,11 +799,11 @@ ENDIF(NOT WITH_QTWEBKIT)
+ #    qgshttptransaction.h
+ #)
+ 
+-IF (QT_MOBILITY_LOCATION_FOUND OR Qt5Positioning_FOUND)
++IF (QT_MOBILITY_LOCATION_FOUND OR TARGET Qt5::Positioning)
+   SET(QGIS_CORE_MOC_HDRS ${QGIS_CORE_MOC_HDRS}
+     gps/qgsqtlocationconnection.h
+   )
+-ENDIF (QT_MOBILITY_LOCATION_FOUND OR Qt5Positioning_FOUND)
++ENDIF ()
+ 
+ 
+ IF (HAVE_OPENCL)
+@@ -1215,16 +1215,17 @@ SET(QGIS_CORE_HDRS
+   validity/qgsvaliditycheckregistry.h
+ )
+ 
+-IF (QT_MOBILITY_LOCATION_FOUND OR Qt5Positioning_FOUND)
++IF (QT_MOBILITY_LOCATION_FOUND OR TARGET Qt5::Positioning)
+   SET(QGIS_CORE_HDRS ${QGIS_CORE_HDRS}
+     gps/qgsqtlocationconnection.h
+     gps/qgsgpsconnectionregistry.h
+   )
+-ENDIF (QT_MOBILITY_LOCATION_FOUND OR Qt5Positioning_FOUND)
++ENDIF ()
+ 
+ INCLUDE_DIRECTORIES(
+   ${CMAKE_CURRENT_SOURCE_DIR}
+   ${CMAKE_CURRENT_BINARY_DIR}
++  ${CMAKE_CURRENT_BINARY_DIR}/vectortile
+   3d
+   annotations
+   auth
+@@ -1257,21 +1258,6 @@ INCLUDE_DIRECTORIES(
+   ${CMAKE_SOURCE_DIR}/external/poly2tri
+ )
+ 
+-INCLUDE_DIRECTORIES(SYSTEM
+-  ${PROJ_INCLUDE_DIR}
+-  ${GDAL_INCLUDE_DIR}
+-  ${LIBZIP_INCLUDE_DIRS}
+-  ${SPATIALINDEX_INCLUDE_DIR}
+-  ${GEOS_INCLUDE_DIR}
+-  ${EXPAT_INCLUDE_DIR}
+-  ${SQLITE3_INCLUDE_DIR}
+-  ${SPATIALITE_INCLUDE_DIR}
+-  ${QCA_INCLUDE_DIR}
+-  ${QTKEYCHAIN_INCLUDE_DIR}
+-  ${Qt5SerialPort_INCLUDE_DIRS}
+-)
+-
+-
+ IF (HAVE_OPENCL)
+     SET(QGIS_CORE_SRCS ${QGIS_CORE_SRCS}
+         qgsopenclutils.cpp
+@@ -1279,7 +1265,6 @@ IF (HAVE_OPENCL)
+     SET(QGIS_CORE_HDRS ${QGIS_CORE_HDRS}
+         qgsopenclutils.h
+     )
+-    INCLUDE_DIRECTORIES(SYSTEM ${OpenCL_INCLUDE_DIRS})
+ ENDIF (HAVE_OPENCL)
+ 
+ 
+@@ -1314,12 +1299,12 @@ GENERATE_EXPORT_HEADER(
+ SET(QGIS_CORE_HDRS ${QGIS_CORE_HDRS} ${CMAKE_CURRENT_BINARY_DIR}/qgis_core.h)
+ 
+ IF(ENABLE_MODELTEST)
+-  TARGET_LINK_LIBRARIES(qgis_core ${Qt5Test_LIBRARIES})
++  TARGET_LINK_LIBRARIES(qgis_core Qt5::Test)
+ ENDIF(ENABLE_MODELTEST)
+ 
+ 
+ IF(HAVE_OPENCL)
+-  TARGET_LINK_LIBRARIES(qgis_core ${OpenCL_LIBRARY})
++  TARGET_LINK_LIBRARIES(qgis_core OpenCL::OpenCL)
+ ENDIF(HAVE_OPENCL)
+ 
+ 
+@@ -1378,39 +1363,39 @@ IF (QT_MOBILITY_LOCATION_FOUND)
+ ENDIF (QT_MOBILITY_LOCATION_FOUND)
+ 
+ TARGET_LINK_LIBRARIES(qgis_core
+-  ${Qt5Xml_LIBRARIES}
+-  ${Qt5Core_LIBRARIES}
+-  ${Qt5Gui_LIBRARIES}
+-  ${Qt5Widgets_LIBRARIES}
+-  ${Qt5Svg_LIBRARIES}
+-  ${Qt5PrintSupport_LIBRARIES}
+-  ${Qt5Network_LIBRARIES}
+-  ${OPTIONAL_QTWEBKIT}
+-  ${Qt5Sql_LIBRARIES}
+-  ${Qt5Concurrent_LIBRARIES}
+-  ${QCA_LIBRARY}
+-  ${QTKEYCHAIN_LIBRARY}
+-  ${PROJ_LIBRARY}
+-  ${GEOS_LIBRARY}
+-  ${GDAL_LIBRARY}
+-  ${SPATIALINDEX_LIBRARY}
+-  ${EXPAT_LIBRARY}
+-  ${SQLITE3_LIBRARY}
+-  ${SPATIALITE_LIBRARY}
+-  ${LIBZIP_LIBRARY}
++  libzip::zip
++  Qt5::Xml
++  Qt5::Core
++  Qt5::Gui
++  Qt5::Widgets
++  Qt5::Svg
++  Qt5::PrintSupport
++  Qt5::Network
++  Qt5::Sql
++  Qt5::Concurrent
++  Qca::Qca
++  QtKeychain::QtKeychain
++  PROJ::proj
++  GEOS::geos
++  GDAL::GDAL
++  libspatialindex::libspatialindex
++  libspatialite::libspatialite
++  expat::expat
++  SQLite::SQLite3
++  ZLIB::ZLIB
+ )
+ 
+-IF (Qt5SerialPort_FOUND)
++IF (TARGET Qt5::SerialPort)
+   TARGET_LINK_LIBRARIES(qgis_core
+     Qt5::SerialPort
+   )
+-ENDIF (Qt5SerialPort_FOUND)
++ENDIF ()
+ 
+-IF (Qt5Positioning_FOUND)
++IF (TARGET Qt5::Positioning)
+   TARGET_LINK_LIBRARIES(qgis_core
+     Qt5::Positioning
+   )
+-ENDIF (Qt5Positioning_FOUND)
++ENDIF ()
+ 
+ TARGET_COMPILE_DEFINITIONS(qgis_core PRIVATE "-DQT_NO_FOREACH")
+ 
+diff --git a/src/core/dxf/qgsdxfpaintengine.cpp b/src/core/dxf/qgsdxfpaintengine.cpp
+index 88a2682863..90d2af5386 100644
+--- a/src/core/dxf/qgsdxfpaintengine.cpp
++++ b/src/core/dxf/qgsdxfpaintengine.cpp
+@@ -20,6 +20,8 @@
+ #include "qgsdxfpaintdevice.h"
+ #include "qgslogger.h"
+ 
++#include <QPainterPath>
++
+ QgsDxfPaintEngine::QgsDxfPaintEngine( const QgsDxfPaintDevice *dxfDevice, QgsDxfExport *dxf )
+   : QPaintEngine( QPaintEngine::AllFeatures /*QPaintEngine::PainterPaths | QPaintEngine::PaintOutsidePaintEvent*/ )
+   , mPaintDevice( dxfDevice )
+diff --git a/src/core/geometry/qgslinestring.cpp b/src/core/geometry/qgslinestring.cpp
+index 5ec04bbcd2..2f074b937d 100644
+--- a/src/core/geometry/qgslinestring.cpp
++++ b/src/core/geometry/qgslinestring.cpp
+@@ -28,6 +28,7 @@
+ #include <cmath>
+ #include <memory>
+ #include <QPainter>
++#include <QPainterPath>
+ #include <limits>
+ #include <QDomDocument>
+ #include <QJsonObject>
+diff --git a/src/core/symbology/qgsarrowsymbollayer.cpp b/src/core/symbology/qgsarrowsymbollayer.cpp
+index a04680cfec..d0a86d181f 100644
+--- a/src/core/symbology/qgsarrowsymbollayer.cpp
++++ b/src/core/symbology/qgsarrowsymbollayer.cpp
+@@ -16,6 +16,8 @@
+ #include "qgsarrowsymbollayer.h"
+ #include "qgssymbollayerutils.h"
+ 
++#include <QPainterPath>
++
+ QgsArrowSymbolLayer::QgsArrowSymbolLayer()
+ {
+   /* default values */
+diff --git a/src/core/symbology/qgslinesymbollayer.cpp b/src/core/symbology/qgslinesymbollayer.cpp
+index c6efdcdad0..f64988bea8 100644
+--- a/src/core/symbology/qgslinesymbollayer.cpp
++++ b/src/core/symbology/qgslinesymbollayer.cpp
+@@ -28,6 +28,7 @@
+ #include "qgsexpressioncontextutils.h"
+ 
+ #include <QPainter>
++#include <QPainterPath>
+ #include <QDomDocument>
+ #include <QDomElement>
+ 
+diff --git a/src/core/symbology/qgsmarkersymbollayer.h b/src/core/symbology/qgsmarkersymbollayer.h
+index 61b75fd2d6..c9782a6084 100644
+--- a/src/core/symbology/qgsmarkersymbollayer.h
++++ b/src/core/symbology/qgsmarkersymbollayer.h
+@@ -29,6 +29,7 @@
+ 
+ #include <QPen>
+ #include <QBrush>
++#include <QPainterPath>
+ #include <QPicture>
+ #include <QPolygonF>
+ #include <QFont>
+diff --git a/src/core/symbology/qgssymbollayer.cpp b/src/core/symbology/qgssymbollayer.cpp
+index 10dcbdd4be..36360dd13d 100644
+--- a/src/core/symbology/qgssymbollayer.cpp
++++ b/src/core/symbology/qgssymbollayer.cpp
+@@ -30,6 +30,7 @@
+ 
+ #include <QSize>
+ #include <QPainter>
++#include <QPainterPath>
+ #include <QPointF>
+ #include <QPolygonF>
+ 
+diff --git a/src/crssync/CMakeLists.txt b/src/crssync/CMakeLists.txt
+index 21309cb559..53f741955d 100644
+--- a/src/crssync/CMakeLists.txt
++++ b/src/crssync/CMakeLists.txt
+@@ -6,15 +6,11 @@ INCLUDE_DIRECTORIES(
+   ${CMAKE_SOURCE_DIR}/external
+   ${CMAKE_BINARY_DIR}/src/core
+ )
+-INCLUDE_DIRECTORIES(SYSTEM
+-  ${GDAL_INCLUDE_DIR}
+-  ${PROJ_INCLUDE_DIR}
+-)
+ 
+ TARGET_LINK_LIBRARIES(crssync
+   qgis_core
+-  ${PROJ_LIBRARY}
+-  ${GDAL_LIBRARY}
++  PROJ::proj
++  GDAL::GDAL
+ )
+ 
+ IF(MSVC AND NOT USING_NMAKE)
+diff --git a/src/gui/CMakeLists.txt b/src/gui/CMakeLists.txt
+index 7f90d7f0a3..af90d11531 100644
+--- a/src/gui/CMakeLists.txt
++++ b/src/gui/CMakeLists.txt
+@@ -767,16 +767,16 @@ SET(QGIS_GUI_MOC_HDRS
+   processing/qgsprocessingwidgetwrapper.h
+   processing/qgsprocessingwidgetwrapperimpl.h
+ )
+-FIND_PACKAGE(Qt5Qml REQUIRED)
+-FIND_PACKAGE(Qt5QuickWidgets REQUIRED)
+-
+-IF(Qt5Qml_FOUND)
+-ADD_DEFINITIONS(-DWITH_QML)
+-SET(QGIS_GUI_MOC_HDRS
+-  ${QGIS_GUI_MOC_HDRS}
+-  editorwidgets/qgsqmlwidgetwrapper.h
+-)
+-ENDIF(Qt5Qml_FOUND)
++FIND_PACKAGE(Qt5 COMPONENTS Qml REQUIRED)
++FIND_PACKAGE(Qt5 COMPONENTS QuickWidgets REQUIRED)
++
++IF(TARGET Qt5::Qml)
++    ADD_DEFINITIONS(-DWITH_QML)
++    SET(QGIS_GUI_MOC_HDRS
++        ${QGIS_GUI_MOC_HDRS}
++        editorwidgets/qgsqmlwidgetwrapper.h
++    )
++ENDIF()
+ 
+ SET_PROPERTY(GLOBAL PROPERTY QGIS_GUI_MOC_HDRS ${QGIS_GUI_MOC_HDRS})
+ 
+@@ -886,13 +886,13 @@ SET(QGIS_GUI_HDRS
+   symbology/qgssymbolwidgetcontext.h
+ )
+ 
+-IF(Qt5Qml_FOUND)
++IF(TARGET Qt5::Qml)
+ 
+-SET(QGIS_GUI_SRCS
+-  ${QGIS_GUI_SRCS}
+-  editorwidgets/qgsqmlwidgetwrapper.cpp
+-)
+-ENDIF(Qt5Qml_FOUND)
++    SET(QGIS_GUI_SRCS
++        ${QGIS_GUI_SRCS}
++        editorwidgets/qgsqmlwidgetwrapper.cpp
++    )
++ENDIF()
+ 
+ SET_PROPERTY(GLOBAL PROPERTY QGIS_GUI_HDRS ${QGIS_GUI_HDRS})
+ 
+@@ -939,9 +939,6 @@ IF(ENABLE_MODELTEST)
+   INCLUDE_DIRECTORIES(../../tests/qt_modeltest)
+ ENDIF(ENABLE_MODELTEST)
+ 
+-INCLUDE_DIRECTORIES(SYSTEM
+-  ${QT_QTUITOOLS_INCLUDE_DIR}
+-)
+ INCLUDE_DIRECTORIES(
+   ${CMAKE_SOURCE_DIR}/src/gui
+   ${CMAKE_SOURCE_DIR}/src/gui/symbology
+@@ -982,15 +979,6 @@ INCLUDE_DIRECTORIES(
+   ${CMAKE_BINARY_DIR}/src/ui
+   ${CMAKE_BINARY_DIR}/src/native
+ )
+-INCLUDE_DIRECTORIES(SYSTEM
+-  ${QCA_INCLUDE_DIR}
+-  ${QTKEYCHAIN_INCLUDE_DIR}
+-  ${QWT_INCLUDE_DIR}
+-  ${SQLITE3_INCLUDE_DIR}
+-  ${QSCINTILLA_INCLUDE_DIR}
+-  ${GDAL_INCLUDE_DIR}
+-  ${PROJ_INCLUDE_DIR}
+-)
+ 
+ # disable deprecation warnings for classes re-exporting deprecated methods
+ IF(MSVC)
+@@ -1067,10 +1055,11 @@ ADD_DEPENDENCIES(qgis_gui ui)
+ TARGET_LINK_LIBRARIES(qgis_gui
+   qgis_core
+   qgis_native
+-  ${Qt5UiTools_LIBRARIES}
+-  ${QWT_LIBRARY}
+-  ${QSCINTILLA_LIBRARY}
+-  ${Qt5QuickWidgets_LIBRARIES}
++  Qt5::UiTools
++  qwt::qwt
++  qscintilla::qscintilla
++  Qt5::Qml
++  Qt5::QuickWidgets
+ )
+ 
+ IF(ENABLE_MODELTEST)
+diff --git a/src/gui/qgscurveeditorwidget.cpp b/src/gui/qgscurveeditorwidget.cpp
+index e82548041a..18d09b8240 100644
+--- a/src/gui/qgscurveeditorwidget.cpp
++++ b/src/gui/qgscurveeditorwidget.cpp
+@@ -32,6 +32,8 @@
+ #include <qwt_plot_picker.h>
+ #include <qwt_picker_machine.h>
+ #include <qwt_plot_layout.h>
++#include <qwt_scale_div.h>
++#include <qwt_scale_map.h>
+ #include <qwt_symbol.h>
+ #include <qwt_legend.h>
+ 
+diff --git a/src/gui/qgsgradientcolorrampdialog.cpp b/src/gui/qgsgradientcolorrampdialog.cpp
+index bc4534b925..4d638b45b8 100644
+--- a/src/gui/qgsgradientcolorrampdialog.cpp
++++ b/src/gui/qgsgradientcolorrampdialog.cpp
+@@ -38,6 +38,8 @@
+ #include <qwt_plot_picker.h>
+ #include <qwt_picker_machine.h>
+ #include <qwt_plot_layout.h>
++#include <qwt_scale_div.h>
++#include <qwt_scale_map.h>
+ #include <qwt_symbol.h>
+ #include <qwt_legend.h>
+ 
+diff --git a/src/gui/qgshistogramwidget.cpp b/src/gui/qgshistogramwidget.cpp
+index 7af3db2bba..0fb6b992cf 100644
+--- a/src/gui/qgshistogramwidget.cpp
++++ b/src/gui/qgshistogramwidget.cpp
+@@ -37,6 +37,7 @@
+ #include <qwt_plot_layout.h>
+ #include <qwt_plot_renderer.h>
+ #include <qwt_plot_histogram.h>
++#include <qwt_text.h>
+ 
+ 
+ QgsHistogramWidget::QgsHistogramWidget( QWidget *parent, QgsVectorLayer *layer, const QString &fieldOrExp )
+diff --git a/src/gui/qgsmapoverviewcanvas.cpp b/src/gui/qgsmapoverviewcanvas.cpp
+index e55ff60c45..5e86f8126f 100644
+--- a/src/gui/qgsmapoverviewcanvas.cpp
++++ b/src/gui/qgsmapoverviewcanvas.cpp
+@@ -24,6 +24,7 @@
+ #include "qgsmaptopixel.h"
+ 
+ #include <QPainter>
++#include <QPainterPath>
+ #include <QPaintEvent>
+ #include <QResizeEvent>
+ #include <QMouseEvent>
+diff --git a/src/gui/raster/qgsrasterhistogramwidget.cpp b/src/gui/raster/qgsrasterhistogramwidget.cpp
+index d1b1e56249..8832fe2af3 100644
+--- a/src/gui/raster/qgsrasterhistogramwidget.cpp
++++ b/src/gui/raster/qgsrasterhistogramwidget.cpp
+@@ -43,6 +43,7 @@
+ #include <qwt_plot_layout.h>
+ #include <qwt_plot_renderer.h>
+ #include <qwt_plot_histogram.h>
++#include <qwt_scale_div.h>
+ 
+ #ifdef Q_OS_WIN
+ #include <time.h>
+diff --git a/src/gui/symbology/qgsgraduatedhistogramwidget.cpp b/src/gui/symbology/qgsgraduatedhistogramwidget.cpp
+index 403955e9a9..c30def1397 100644
+--- a/src/gui/symbology/qgsgraduatedhistogramwidget.cpp
++++ b/src/gui/symbology/qgsgraduatedhistogramwidget.cpp
+@@ -38,6 +38,7 @@
+ #include <qwt_plot_layout.h>
+ #include <qwt_plot_renderer.h>
+ #include <qwt_plot_histogram.h>
++#include <qwt_scale_map.h>
+ 
+ 
+ QgsGraduatedHistogramWidget::QgsGraduatedHistogramWidget( QWidget *parent )
+diff --git a/src/native/CMakeLists.txt b/src/native/CMakeLists.txt
+index 38939aaaa0..6f58561473 100644
+--- a/src/native/CMakeLists.txt
++++ b/src/native/CMakeLists.txt
+@@ -10,7 +10,7 @@ ENDIF(IOS)
+ SET(NATIVE_LINK_LIBS)
+ 
+ IF(UNIX AND NOT APPLE AND NOT ANDROID)
+-  FIND_PACKAGE(Qt5DBus REQUIRED)
++  FIND_PACKAGE(Qt5 COMPONENTS DBus REQUIRED)
+ ENDIF(UNIX AND NOT APPLE AND NOT ANDROID)
+ 
+ IF(APPLE)
+@@ -150,8 +150,8 @@ IF(NOT ANDROID)
+ ENDIF(NOT ANDROID)
+ 
+ TARGET_LINK_LIBRARIES(qgis_native
+-    ${Qt5Core_LIBRARIES}
+-    ${Qt5Gui_LIBRARIES}
++    Qt5::Core
++    Qt5::Gui
+     "${NATIVE_LINK_LIBS}"
+     )
+ 
+diff --git a/src/plugins/grass/CMakeLists.txt b/src/plugins/grass/CMakeLists.txt
+index a2ed68ea9f..52efb64ec1 100644
+--- a/src/plugins/grass/CMakeLists.txt
++++ b/src/plugins/grass/CMakeLists.txt
+@@ -170,14 +170,6 @@ INCLUDE_DIRECTORIES(
+   ${CMAKE_BINARY_DIR}/src/app
+   ${CMAKE_CURRENT_BINARY_DIR}
+ )
+-INCLUDE_DIRECTORIES(SYSTEM
+-  ${GDAL_INCLUDE_DIR}
+-  ${PROJ_INCLUDE_DIR}
+-  ${GEOS_INCLUDE_DIR}
+-  ${POSTGRES_INCLUDE_DIR}
+-  qtermwidget
+-)
+-
+ 
+ MACRO(ADD_GRASSPLUGIN GRASS_BUILD_VERSION)
+     SET(GRASS_PREFIX ${GRASS_PREFIX${GRASS_BUILD_VERSION}})
+@@ -230,9 +222,9 @@ MACRO(ADD_GRASSPLUGIN GRASS_BUILD_VERSION)
+     )
+ 
+     TARGET_LINK_LIBRARIES (qgis.g.browser${GRASS_BUILD_VERSION}
+-      ${Qt5Gui_LIBRARIES}
+-      ${Qt5Widgets_LIBRARIES}
+-      ${Qt5Core_LIBRARIES}
++      Qt5::Gui
++      Qt5::Widgets
++      Qt5::Core
+     )
+ 
+     ########################################################
+diff --git a/src/plugins/offline_editing/CMakeLists.txt b/src/plugins/offline_editing/CMakeLists.txt
+index 651ed83db2..59f0b9753b 100644
+--- a/src/plugins/offline_editing/CMakeLists.txt
++++ b/src/plugins/offline_editing/CMakeLists.txt
+@@ -40,7 +40,7 @@ ADD_LIBRARY (offlineeditingplugin MODULE
+ TARGET_LINK_LIBRARIES(offlineeditingplugin
+   qgis_core
+   qgis_gui
+-  ${SPATIALITE_LIBRARY}
++  spatialite::spacialite
+ )
+ 
+ INCLUDE_DIRECTORIES(SYSTEM
+diff --git a/src/providers/arcgisrest/CMakeLists.txt b/src/providers/arcgisrest/CMakeLists.txt
+index d31921acc9..72d9d1ce2c 100644
+--- a/src/providers/arcgisrest/CMakeLists.txt
++++ b/src/providers/arcgisrest/CMakeLists.txt
+@@ -15,18 +15,6 @@ INCLUDE_DIRECTORIES(
+   ${CMAKE_BINARY_DIR}/src/gui
+ )
+ 
+-INCLUDE_DIRECTORIES(SYSTEM
+-  ${GEOS_INCLUDE_DIR}
+-  ${QCA_INCLUDE_DIR}
+-  ${QTKEYCHAIN_INCLUDE_DIR}
+-)
+-
+-IF (WITH_GUI)
+-  INCLUDE_DIRECTORIES(SYSTEM
+-    ${QSCINTILLA_INCLUDE_DIR}
+-  )
+-ENDIF ()
+-
+ ###############################################################################
+ 
+ SET (AFS_SRCS
+@@ -62,12 +50,12 @@ ADD_LIBRARY(arcgisfeatureserverprovider MODULE ${AFS_SRCS} ${AFS_MOC_SRCS})
+ 
+ TARGET_LINK_LIBRARIES(arcgisfeatureserverprovider
+   qgis_core
+-  ${QCA_LIBRARY}
++  Qca::Qca
+ )
+ 
+ TARGET_LINK_LIBRARIES (arcgisfeatureserverprovider_a
+   qgis_core
+-  ${QCA_LIBRARY}
++  Qca::Qca
+ )
+ 
+ IF (WITH_GUI)
+@@ -114,7 +102,7 @@ ADD_LIBRARY(arcgismapserverprovider MODULE ${AMS_SRCS} ${AMS_MOC_SRCS})
+ 
+ TARGET_LINK_LIBRARIES(arcgismapserverprovider
+   qgis_core
+-  ${QCA_LIBRARY}
++  Qca::Qca
+ )
+ 
+ IF (WITH_GUI)
+diff --git a/src/providers/gdal/CMakeLists.txt b/src/providers/gdal/CMakeLists.txt
+index b20f5fa673..b12ac8e442 100644
+--- a/src/providers/gdal/CMakeLists.txt
++++ b/src/providers/gdal/CMakeLists.txt
+@@ -34,12 +34,6 @@ INCLUDE_DIRECTORIES (
+   ${CMAKE_BINARY_DIR}/src/gui
+   ${CMAKE_BINARY_DIR}/src/ui
+ )
+-INCLUDE_DIRECTORIES (SYSTEM
+-  ${GDAL_INCLUDE_DIR}
+-  ${SQLITE3_INCLUDE_DIR}
+-  ${QTKEYCHAIN_INCLUDE_DIR}
+-  ${QCA_INCLUDE_DIR}
+-)
+ 
+ QT5_WRAP_CPP(GDAL_MOC_SRCS ${GDAL_MOC_HDRS})
+ ADD_LIBRARY (gdalprovider MODULE ${GDAL_SRCS} ${GDAL_MOC_SRCS})
+diff --git a/src/providers/gpx/CMakeLists.txt b/src/providers/gpx/CMakeLists.txt
+index 1b56bc0f74..276d27efe5 100644
+--- a/src/providers/gpx/CMakeLists.txt
++++ b/src/providers/gpx/CMakeLists.txt
+@@ -25,16 +25,13 @@ INCLUDE_DIRECTORIES(
+   ${CMAKE_BINARY_DIR}/src/core
+   ${CMAKE_BINARY_DIR}/src/gui
+ )
+-INCLUDE_DIRECTORIES (SYSTEM
+-  ${EXPAT_INCLUDE_DIR}
+-)
+ 
+ QT5_WRAP_CPP(GPX_MOC_SRCS ${GPX_MOC_HDRS})
+ 
+ ADD_LIBRARY(gpxprovider MODULE ${GPX_SRCS} ${GPX_MOC_SRCS})
+ 
+ TARGET_LINK_LIBRARIES(gpxprovider
+-  ${EXPAT_LIBRARY}
++  expat::expat
+   qgis_core
+ )
+ 
+diff --git a/src/providers/grass/CMakeLists.txt b/src/providers/grass/CMakeLists.txt
+index 61d2cc410e..3644183906 100644
+--- a/src/providers/grass/CMakeLists.txt
++++ b/src/providers/grass/CMakeLists.txt
+@@ -16,12 +16,6 @@ INCLUDE_DIRECTORIES(
+   ${CMAKE_BINARY_DIR}/src/providers/grass
+   ${CMAKE_CURRENT_BINARY_DIR}
+ )
+-INCLUDE_DIRECTORIES (SYSTEM
+-  ${GDAL_INCLUDE_DIR}
+-  ${GEOS_INCLUDE_DIR}
+-  ${PROJ_INCLUDE_DIR}
+-  ${POSTGRES_INCLUDE_DIR}
+-)
+ 
+ #
+ # GRASS library
+@@ -215,14 +209,14 @@ MACRO(ADD_GRASSLIB GRASS_BUILD_VERSION)
+       TARGET_LINK_LIBRARIES(qgis.d.rast${GRASS_BUILD_VERSION}
+         ${GRASS_LIBRARY${GRASS_BUILD_VERSION}_gis}
+         ${GRASS_LIBRARY${GRASS_BUILD_VERSION}_datetime}
+-        ${GDAL_LIBRARY}
++        GDAL::GDAL
+       )
+     ELSE (GRASS_MAJOR_VERSION LESS 7 )
+       TARGET_LINK_LIBRARIES(qgis.d.rast${GRASS_BUILD_VERSION}
+         ${GRASS_LIBRARY${GRASS_BUILD_VERSION}_gis}
+         ${GRASS_LIBRARY${GRASS_BUILD_VERSION}_datetime}
+         ${GRASS_LIBRARY${GRASS_BUILD_VERSION}_raster}
+-        ${GDAL_LIBRARY}
++        GDAL::GDAL
+       )
+     ENDIF (GRASS_MAJOR_VERSION LESS 7 )
+ 
+@@ -235,7 +229,7 @@ MACRO(ADD_GRASSLIB GRASS_BUILD_VERSION)
+         ${GRASS_LIBRARY${GRASS_BUILD_VERSION}_gis}
+         ${GRASS_LIBRARY${GRASS_BUILD_VERSION}_datetime}
+         ${GRASS_LIBRARY${GRASS_BUILD_VERSION}_gproj}
+-        ${GDAL_LIBRARY}
++	    GDAL::GDAL
+       )
+     ELSE (GRASS_MAJOR_VERSION LESS 7 )
+       TARGET_LINK_LIBRARIES(qgis.g.info${GRASS_BUILD_VERSION}
+@@ -243,7 +237,7 @@ MACRO(ADD_GRASSLIB GRASS_BUILD_VERSION)
+         ${GRASS_LIBRARY${GRASS_BUILD_VERSION}_datetime}
+         ${GRASS_LIBRARY${GRASS_BUILD_VERSION}_gproj}
+         ${GRASS_LIBRARY${GRASS_BUILD_VERSION}_raster}
+-        ${GDAL_LIBRARY}
++	    GDAL::GDAL
+       )
+     ENDIF (GRASS_MAJOR_VERSION LESS 7 )
+     IF (UNIX)
+@@ -262,7 +256,7 @@ MACRO(ADD_GRASSLIB GRASS_BUILD_VERSION)
+         qgisgrass${GRASS_BUILD_VERSION}
+         ${GRASS_LIBRARY${GRASS_BUILD_VERSION}_gis}
+         ${GRASS_LIBRARY${GRASS_BUILD_VERSION}_datetime}
+-        ${GDAL_LIBRARY}
++	    GDAL::GDAL
+         qgis_core
+       )
+     ELSE (GRASS_MAJOR_VERSION LESS 7 )
+@@ -271,7 +265,7 @@ MACRO(ADD_GRASSLIB GRASS_BUILD_VERSION)
+         ${GRASS_LIBRARY${GRASS_BUILD_VERSION}_gis}
+         ${GRASS_LIBRARY${GRASS_BUILD_VERSION}_datetime}
+         ${GRASS_LIBRARY${GRASS_BUILD_VERSION}_raster}
+-        ${GDAL_LIBRARY}
++	    GDAL::GDAL
+         qgis_core
+       )
+     ENDIF (GRASS_MAJOR_VERSION LESS 7 )
+@@ -290,7 +284,7 @@ MACRO(ADD_GRASSLIB GRASS_BUILD_VERSION)
+       ${GRASS_LIBRARY${GRASS_BUILD_VERSION}_vect}
+       ${GRASS_LIBRARY${GRASS_BUILD_VERSION}_dbmibase}
+       ${GRASS_LIBRARY${GRASS_BUILD_VERSION}_dbmiclient}
+-      ${GDAL_LIBRARY}
++      GDAL::GDAL
+       qgis_core
+     )
+ 
+diff --git a/src/providers/mdal/CMakeLists.txt b/src/providers/mdal/CMakeLists.txt
+index 16865d03b3..c7644538eb 100644
+--- a/src/providers/mdal/CMakeLists.txt
++++ b/src/providers/mdal/CMakeLists.txt
+@@ -18,7 +18,7 @@ ENDIF ()
+ 
+ SET(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/external/mdal/cmake ${CMAKE_MODULE_PATH})
+ FIND_PACKAGE(HDF5)
+-FIND_PACKAGE(NetCDF)
++FIND_PACKAGE(netCDF)
+ FIND_PACKAGE(LibXml2)
+ 
+ ########################################################
+@@ -175,24 +175,19 @@ IF (WITH_GUI)
+ ENDIF (WITH_GUI)
+ 
+ IF (HDF5_FOUND)
+-  TARGET_INCLUDE_DIRECTORIES(mdalprovider PRIVATE ${HDF5_INCLUDE_DIRS})
+-  TARGET_LINK_LIBRARIES(mdalprovider ${HDF5_C_LIBRARIES} )
++  TARGET_LINK_LIBRARIES(mdalprovider hdf5::hdf5 )
+ ENDIF (HDF5_FOUND)
+ 
+ IF (GDAL_FOUND)
+-  TARGET_INCLUDE_DIRECTORIES(mdalprovider PRIVATE ${GDAL_INCLUDE_DIR})
+-  TARGET_LINK_LIBRARIES(mdalprovider ${GDAL_LIBRARY} )
++  TARGET_LINK_LIBRARIES(mdalprovider GDAL::GDAL )
+ ENDIF (GDAL_FOUND)
+ 
+ IF (NETCDF_FOUND)
+-  TARGET_INCLUDE_DIRECTORIES(mdalprovider PRIVATE ${NETCDF_INCLUDE_DIR})
+-  TARGET_LINK_LIBRARIES(mdalprovider ${NETCDF_LIBRARY} )
++  TARGET_LINK_LIBRARIES(mdalprovider netCDF::netcdf )
+ ENDIF (NETCDF_FOUND)
+ 
+ IF (LIBXML2_FOUND)
+-  TARGET_INCLUDE_DIRECTORIES(mdalprovider PRIVATE ${LIBXML2_INCLUDE_DIR})
+-  TARGET_LINK_LIBRARIES(mdalprovider ${LIBXML2_LIBRARIES} )
+-  TARGET_COMPILE_DEFINITIONS(mdalprovider PRIVATE ${LIBXML2_DEFINITIONS})
++  TARGET_LINK_LIBRARIES(mdalprovider LibXml2::LibXml2 )
+ ENDIF (LIBXML2_FOUND)
+ 
+ # clang-tidy
+diff --git a/src/providers/ogr/CMakeLists.txt b/src/providers/ogr/CMakeLists.txt
+index c05ef75580..563eeb63e2 100644
+--- a/src/providers/ogr/CMakeLists.txt
++++ b/src/providers/ogr/CMakeLists.txt
+@@ -58,14 +58,6 @@ INCLUDE_DIRECTORIES(
+   ${CMAKE_BINARY_DIR}/src/gui
+   ${CMAKE_BINARY_DIR}/src/ui
+ )
+-INCLUDE_DIRECTORIES(SYSTEM
+-  ${GDAL_INCLUDE_DIR}
+-  ${SQLITE3_INCLUDE_DIR}
+-  ${QTKEYCHAIN_INCLUDE_DIR}
+-  ${QCA_INCLUDE_DIR}
+-  ${QSCINTILLA_INCLUDE_DIR}
+-)
+-
+ 
+ ADD_LIBRARY(ogrprovider MODULE ${OGR_SRCS} ${OGR_MOC_SRCS})
+ ADD_LIBRARY(ogrprovider_a STATIC ${OGR_SRCS} ${OGR_MOC_SRCS})
+diff --git a/src/providers/oracle/CMakeLists.txt b/src/providers/oracle/CMakeLists.txt
+index 3bdfc9e2fe..da3c7cb342 100644
+--- a/src/providers/oracle/CMakeLists.txt
++++ b/src/providers/oracle/CMakeLists.txt
+@@ -57,22 +57,12 @@ INCLUDE_DIRECTORIES(
+   ${CMAKE_BINARY_DIR}/src/gui
+   ${CMAKE_BINARY_DIR}/src/ui
+ )
+-INCLUDE_DIRECTORIES(SYSTEM
+-  ${GEOS_INCLUDE_DIR}
+-  ${QT_QTSQL_INCLUDEDIR}
+-)
+-
+-IF (WITH_GUI)
+-  INCLUDE_DIRECTORIES(SYSTEM
+-    ${QSCINTILLA_INCLUDE_DIR}
+-  )
+-ENDIF ()
+ 
+ ADD_LIBRARY (oracleprovider MODULE ${ORACLE_SRCS} ${ORACLE_HDRS} ${ORACLE_MOC_SRCS})
+ 
+ TARGET_LINK_LIBRARIES (oracleprovider
+   qgis_core
+-  ${Qt5Sql_LIBRARIES}
++  Qt5::Sql
+ )
+ 
+ IF (WITH_GUI)
+diff --git a/src/providers/postgres/CMakeLists.txt b/src/providers/postgres/CMakeLists.txt
+index f56503948b..c0cc98ed84 100644
+--- a/src/providers/postgres/CMakeLists.txt
++++ b/src/providers/postgres/CMakeLists.txt
+@@ -63,27 +63,15 @@ INCLUDE_DIRECTORIES(
+   ${CMAKE_BINARY_DIR}/src/ui
+ )
+ 
+-INCLUDE_DIRECTORIES(SYSTEM
+-  ${POSTGRES_INCLUDE_DIR}
+-  ${QCA_INCLUDE_DIR}
+-  ${QTKEYCHAIN_INCLUDE_DIR}
+-)
+-
+-IF (WITH_GUI)
+-  INCLUDE_DIRECTORIES(SYSTEM
+-    ${QSCINTILLA_INCLUDE_DIR}
+-  )
+-ENDIF ()
+-
+ ADD_LIBRARY (postgresprovider_a STATIC ${PG_SRCS} ${PG_HDRS} ${PG_MOC_SRCS})
+ ADD_LIBRARY (postgresprovider MODULE ${PG_SRCS} ${PG_HDRS} ${PG_MOC_SRCS})
+ 
+ TARGET_LINK_LIBRARIES (postgresprovider_a
+-  ${POSTGRES_LIBRARY}
++  libpq::pq
+   qgis_core
+ )
+ TARGET_LINK_LIBRARIES (postgresprovider
+-  ${POSTGRES_LIBRARY}
++  libpq::pq
+   qgis_core
+ )
+ 
+diff --git a/src/providers/spatialite/CMakeLists.txt b/src/providers/spatialite/CMakeLists.txt
+index e4c307f90b..e11a4234e5 100644
+--- a/src/providers/spatialite/CMakeLists.txt
++++ b/src/providers/spatialite/CMakeLists.txt
+@@ -37,12 +37,6 @@ ENDIF ()
+ 
+ QT5_WRAP_CPP(SPATIALITE_MOC_SRCS ${SPATIALITE_MOC_HDRS})
+ 
+-IF (WITH_GUI)
+-  INCLUDE_DIRECTORIES(SYSTEM
+-    ${QSCINTILLA_INCLUDE_DIR}
+-  )
+-ENDIF ()
+-
+ INCLUDE_DIRECTORIES(
+   ${CMAKE_SOURCE_DIR}/external
+   ${CMAKE_SOURCE_DIR}/src/core
+@@ -56,16 +50,12 @@ INCLUDE_DIRECTORIES(
+   ${CMAKE_BINARY_DIR}/src/gui
+   ${CMAKE_BINARY_DIR}/src/ui
+ )
+-INCLUDE_DIRECTORIES(SYSTEM
+-  ${SQLITE3_INCLUDE_DIR}
+-  ${SPATIALITE_INCLUDE_DIR}
+-)
+ 
+ ADD_LIBRARY (spatialiteprovider MODULE ${SPATIALITE_SRCS} ${SPATIALITE_MOC_SRCS})
+ 
+ TARGET_LINK_LIBRARIES(spatialiteprovider
+   qgis_core
+-  ${SPATIALITE_LIBRARY}
++  libspatialite::libspatialite
+ )
+ 
+ IF (WITH_GUI)
+diff --git a/src/providers/virtual/CMakeLists.txt b/src/providers/virtual/CMakeLists.txt
+index 0c50b0130b..46eae75a00 100644
+--- a/src/providers/virtual/CMakeLists.txt
++++ b/src/providers/virtual/CMakeLists.txt
+@@ -52,19 +52,6 @@ INCLUDE_DIRECTORIES(
+   ${CMAKE_CURRENT_BINARY_DIR} # ui_xxx_dlg.h
+ )
+ 
+-INCLUDE_DIRECTORIES(SYSTEM
+-  ${POSTGRES_INCLUDE_DIR}
+-  ${SQLITE3_INCLUDE_DIR}
+-  ${SPATIALITE_INCLUDE_DIR}
+-  ${QCA_INCLUDE_DIR}
+-)
+-
+-IF (WITH_GUI)
+-  INCLUDE_DIRECTORIES(SYSTEM
+-    ${QSCINTILLA_INCLUDE_DIR}
+-  )
+-ENDIF ()
+-
+ ADD_LIBRARY(virtuallayerprovider MODULE
+   ${QGIS_VLAYER_PROVIDER_SRCS}
+   ${vlayer_provider_MOC_SRCS}
+@@ -74,11 +61,11 @@ ADD_LIBRARY(virtuallayerprovider MODULE
+ 
+ TARGET_LINK_LIBRARIES( virtuallayerprovider
+   qgis_core
+-  ${Qt5Core_LIBRARIES}
+-  ${Qt5Gui_LIBRARIES}
+-  ${Qt5Widgets_LIBRARIES}
+-  ${SQLITE3_LIBRARY}
+-  ${SPATIALITE_LIBRARY}
++  Qt5::Core
++  Qt5::Gui
++  Qt5::Widgets
++  SQLite::SQLite3
++  libspatialite::libspatialite
+ )
+ 
+ IF (WITH_GUI)
+diff --git a/src/providers/wfs/CMakeLists.txt b/src/providers/wfs/CMakeLists.txt
+index 6ec793e8b7..bdf2763ebf 100644
+--- a/src/providers/wfs/CMakeLists.txt
++++ b/src/providers/wfs/CMakeLists.txt
+@@ -62,25 +62,11 @@ INCLUDE_DIRECTORIES (
+   ${CMAKE_BINARY_DIR}/src/gui
+   ${CMAKE_BINARY_DIR}/src/ui
+ )
+-INCLUDE_DIRECTORIES(SYSTEM
+-  ${EXPAT_INCLUDE_DIR}
+-  ${QCA_INCLUDE_DIR}
+-  ${QTKEYCHAIN_INCLUDE_DIR}
+-  ${GDAL_INCLUDE_DIR} # needed by qgsvectorfilewriter.h
+-  ${SQLITE3_INCLUDE_DIR}
+-  ${GDAL_INCLUDE_DIR}
+-)
+-
+-IF (WITH_GUI)
+-  INCLUDE_DIRECTORIES(SYSTEM
+-    ${QSCINTILLA_INCLUDE_DIR}
+-  )
+-ENDIF ()
+ 
+ ADD_LIBRARY (wfsprovider MODULE ${WFS_SRCS} ${WFS_MOC_SRCS})
+ 
+ TARGET_LINK_LIBRARIES (wfsprovider
+-  ${EXPAT_LIBRARY}
++  expat::expat
+   qgis_core
+ )
+ 
+diff --git a/src/providers/wms/CMakeLists.txt b/src/providers/wms/CMakeLists.txt
+index d5bf8d72d6..c9bc40fd1b 100644
+--- a/src/providers/wms/CMakeLists.txt
++++ b/src/providers/wms/CMakeLists.txt
+@@ -44,19 +44,13 @@ INCLUDE_DIRECTORIES(
+   ${CMAKE_BINARY_DIR}/src/core
+   ${CMAKE_BINARY_DIR}/src/gui
+ )
+-INCLUDE_DIRECTORIES(SYSTEM
+-  ${GDAL_INCLUDE_DIR}
+-  ${EXPAT_INCLUDE_DIR}
+-  ${QCA_INCLUDE_DIR}
+-  ${QTKEYCHAIN_INCLUDE_DIR}
+-)
+ 
+ ADD_LIBRARY(wmsprovider_a STATIC ${WMS_SRCS} ${WMS_MOC_SRCS})
+ ADD_LIBRARY(wmsprovider MODULE ${WMS_SRCS} ${WMS_MOC_SRCS})
+ 
+ TARGET_LINK_LIBRARIES(wmsprovider
+   qgis_core
+-  ${GDAL_LIBRARY}  # for OGR_G_CreateGeometryFromJson()
++  GDAL::GDAL
+ )
+ 
+ 
+diff --git a/src/quickgui/CMakeLists.txt b/src/quickgui/CMakeLists.txt
+index eb5a17bdd4..dc4c7911c3 100644
+--- a/src/quickgui/CMakeLists.txt
++++ b/src/quickgui/CMakeLists.txt
+@@ -72,19 +72,6 @@ INCLUDE_DIRECTORIES(
+   ${CMAKE_BINARY_DIR}/src/core
+ )
+ 
+-INCLUDE_DIRECTORIES(SYSTEM
+-  ${LIBZIP_INCLUDE_DIRS}
+-  ${SPATIALINDEX_INCLUDE_DIR}
+-  ${PROJ_INCLUDE_DIR}
+-  ${GEOS_INCLUDE_DIR}
+-  ${GDAL_INCLUDE_DIR}
+-  ${EXPAT_INCLUDE_DIR}
+-  ${SQLITE3_INCLUDE_DIR}
+-  ${SPATIALITE_INCLUDE_DIR}
+-  ${QCA_INCLUDE_DIR}
+-  ${QTKEYCHAIN_INCLUDE_DIR}
+-)
+-
+ ADD_DEFINITIONS(-DCORE_EXPORT=)
+ 
+ 
+@@ -106,7 +93,14 @@ ADD_LIBRARY(qgis_quick ${LIBRARY_TYPE}
+     ${QGIS_QUICK_GUI_MOC_HDRS}
+     ${QGIS_QUICK_GUI_MOC_SRCS}
+     ${QGIS_QUICK_GUI_HDRS})
+-TARGET_LINK_LIBRARIES(qgis_quick Qt5::Quick Qt5::Qml Qt5::Xml Qt5::Concurrent Qt5::Positioning qgis_core)
++TARGET_LINK_LIBRARIES(qgis_quick
++    Qt5::Quick
++    Qt5::Qml
++    Qt5::Xml
++    Qt5::Concurrent
++    Qt5::Positioning
++    qgis_core
++)
+ IF(CMAKE_SYSTEM_NAME STREQUAL "Android")
+   TARGET_LINK_LIBRARIES(qgis_quick Qt5::AndroidExtras)
+ ENDIF(CMAKE_SYSTEM_NAME STREQUAL "Android")
+diff --git a/src/quickgui/plugin/CMakeLists.txt b/src/quickgui/plugin/CMakeLists.txt
+index 0f6d7e6068..3947bbf8b6 100644
+--- a/src/quickgui/plugin/CMakeLists.txt
++++ b/src/quickgui/plugin/CMakeLists.txt
+@@ -60,19 +60,6 @@ INCLUDE_DIRECTORIES(
+   ${CMAKE_BINARY_DIR}/src/quickgui
+ )
+ 
+-INCLUDE_DIRECTORIES(SYSTEM
+-  ${LIBZIP_INCLUDE_DIRS}
+-  ${SPATIALINDEX_INCLUDE_DIR}
+-  ${PROJ_INCLUDE_DIR}
+-  ${GEOS_INCLUDE_DIR}
+-  ${GDAL_INCLUDE_DIR}
+-  ${EXPAT_INCLUDE_DIR}
+-  ${SQLITE3_INCLUDE_DIR}
+-  ${SPATIALITE_INCLUDE_DIR}
+-  ${QCA_INCLUDE_DIR}
+-  ${QTKEYCHAIN_INCLUDE_DIR}
+-)
+-
+ ADD_DEFINITIONS(-DCORE_EXPORT=)
+ 
+ ############################################################
+diff --git a/src/server/CMakeLists.txt b/src/server/CMakeLists.txt
+index 6e0bcd640f..f3ea5030b1 100644
+--- a/src/server/CMakeLists.txt
++++ b/src/server/CMakeLists.txt
+@@ -84,20 +84,10 @@ ELSE(MSVC)
+   SET_SOURCE_FILES_PROPERTIES(${QGIS_SERVER_MOC_SRCS} PROPERTIES COMPILE_FLAGS "-Wno-deprecated-declarations" )
+ ENDIF(MSVC)
+ 
+-INCLUDE_DIRECTORIES(SYSTEM
+-  ${GDAL_INCLUDE_DIR}
+-  ${FCGI_INCLUDE_DIR}
+-  ${POSTGRES_INCLUDE_DIR}
+-)
+ INCLUDE_DIRECTORIES(
+   ${CMAKE_CURRENT_BINARY_DIR}
+ )
+-INCLUDE_DIRECTORIES(SYSTEM
+-  ${QT_INCLUDE_DIR}
+-  ${QGIS_INCLUDE_DIR}
+-  ${QCA_INCLUDE_DIR}
+-  ${QTKEYCHAIN_INCLUDE_DIR}
+-)
++
+ INCLUDE_DIRECTORIES(
+   ${CMAKE_SOURCE_DIR}/src/core
+   ${CMAKE_SOURCE_DIR}/src/core/auth
+@@ -139,11 +129,11 @@ ENDIF (NOT ANDROID)
+ TARGET_LINK_LIBRARIES(qgis_server
+   qgis_core
+   qgis_analysis
+-  ${PROJ_LIBRARY}
++  PROJ::proj
+   ${FCGI_LIBRARY}
+-  ${POSTGRES_LIBRARY}
+-  ${GDAL_LIBRARY}
+-  ${QCA_LIBRARY}
++  libpq::pq
++  GDAL::GDAL
++  gca::gca
+ )
+ 
+ IF (WITH_BINDINGS)
+diff --git a/tests/bench/CMakeLists.txt b/tests/bench/CMakeLists.txt
+index 4a83f1d7e4..4aaaf65f25 100644
+--- a/tests/bench/CMakeLists.txt
++++ b/tests/bench/CMakeLists.txt
+@@ -28,19 +28,10 @@ INCLUDE_DIRECTORIES(
+   ${CMAKE_BINARY_DIR}
+   ${CMAKE_BINARY_DIR}/src/core
+ )
+-INCLUDE_DIRECTORIES(SYSTEM
+-  ${SQLITE3_INCLUDE_DIR}
+-)
+ 
+ TARGET_LINK_LIBRARIES(qgis_bench
+   qgis_core
+-  ${SQLITE3_LIBRARY}
+-  ${Qt5Core_LIBRARIES}
+-  ${Qt5Network_LIBRARIES}
+-  ${Qt5Svg_LIBRARIES}
+-  ${Qt5Xml_LIBRARIES}
+-  ${OPTIONAL_QTWEBKIT}
+-  ${Qt5Test_LIBRARIES}
++  Qt5::Test
+ )
+ 
+ IF(APPLE)
+diff --git a/tests/src/analysis/CMakeLists.txt b/tests/src/analysis/CMakeLists.txt
+index 6c80725892..4d9299efbe 100644
+--- a/tests/src/analysis/CMakeLists.txt
++++ b/tests/src/analysis/CMakeLists.txt
+@@ -31,16 +31,6 @@ INCLUDE_DIRECTORIES(${CMAKE_CURRENT_SOURCE_DIR}
+   ${CMAKE_BINARY_DIR}/src/core
+   ${CMAKE_BINARY_DIR}/src/analysis
+ )
+-INCLUDE_DIRECTORIES(SYSTEM
+-  ${QT_INCLUDE_DIR}
+-  ${GDAL_INCLUDE_DIR}
+-  ${GEOS_INCLUDE_DIR}
+-  ${SQLITE3_INCLUDE_DIR}
+-)
+-
+-IF(HAVE_OPENCL)
+-    INCLUDE_DIRECTORIES(SYSTEM ${OpenCL_INCLUDE_DIRS})
+-ENDIF(HAVE_OPENCL)
+ 
+ #note for tests we should not include the moc of our
+ #qtests in the executable file list as the moc is
+@@ -63,8 +53,8 @@ MACRO (ADD_QGIS_TEST TESTSRC)
+   ADD_EXECUTABLE(${TESTNAME} ${${TESTNAME}_SRCS})
+   SET_TARGET_PROPERTIES(${TESTNAME} PROPERTIES AUTOMOC TRUE)
+   TARGET_LINK_LIBRARIES(${TESTNAME}
+-    ${Qt5Core_LIBRARIES}
+-    ${Qt5Test_LIBRARIES}
++    Qt5::Core
++    Qt5::Test
+     qgis_analysis)
+   ADD_TEST(${TESTNAME} ${CMAKE_BINARY_DIR}/output/bin/${TESTNAME} -maxwarnings 10000)
+   #SET_TARGET_PROPERTIES(qgis_${testname} PROPERTIES
+diff --git a/tests/src/auth/CMakeLists.txt b/tests/src/auth/CMakeLists.txt
+index fd3f840b14..c53bc58095 100644
+--- a/tests/src/auth/CMakeLists.txt
++++ b/tests/src/auth/CMakeLists.txt
+@@ -21,19 +21,6 @@ INCLUDE_DIRECTORIES(
+   ${CMAKE_BINARY_DIR}/src/auth/oauth2
+ )
+ 
+-INCLUDE_DIRECTORIES(SYSTEM
+-  ${QT_INCLUDE_DIR}
+-  ${GDAL_INCLUDE_DIR}
+-  ${PROJ_INCLUDE_DIR}
+-  ${GEOS_INCLUDE_DIR}
+-  ${QCA_INCLUDE_DIR}
+-  ${SQLITE3_INCLUDE_DIR}
+-  ${QTKEYCHAIN_INCLUDE_DIR}
+-  ${O2_INCLUDE_DIR}
+-)
+-
+-# libraries
+-
+ # because of htonl
+ IF (WIN32)
+   SET(PLATFORM_LIBRARIES wsock32)
+@@ -46,18 +33,6 @@ MACRO (ADD_QGIS_TEST testname testsrc)
+     TARGET_LINK_LIBRARIES(qgis_${testname} ${APP_SERVICES_LIBRARY})
+   ENDIF(APPLE)
+   TARGET_LINK_LIBRARIES(qgis_${testname}
+-    ${Qt5Core_LIBRARIES}
+-    ${Qt5Xml_LIBRARIES}
+-    ${Qt5Svg_LIBRARIES}
+-    ${Qt5Test_LIBRARIES}
+-    ${Qt5Network_LIBRARIES}
+-    ${PROJ_LIBRARY}
+-    ${GEOS_LIBRARY}
+-    ${GDAL_LIBRARY}
+-    ${OPTIONAL_QTWEBKIT}
+-    ${PROJ_LIBRARY}
+-    ${GEOS_LIBRARY}
+-    ${GDAL_LIBRARY}
+     qgis_core
+     qgis_gui
+     )
+diff --git a/tests/src/core/CMakeLists.txt b/tests/src/core/CMakeLists.txt
+index a2c8bd9113..0d628ec4f9 100644
+--- a/tests/src/core/CMakeLists.txt
++++ b/tests/src/core/CMakeLists.txt
+@@ -27,19 +27,6 @@ INCLUDE_DIRECTORIES(${CMAKE_CURRENT_SOURCE_DIR}
+   ${CMAKE_SOURCE_DIR}/src/test
+   ${CMAKE_BINARY_DIR}/src/core
+ )
+-INCLUDE_DIRECTORIES(SYSTEM
+-  ${QT_INCLUDE_DIR}
+-  ${GDAL_INCLUDE_DIR}
+-  ${PROJ_INCLUDE_DIR}
+-  ${GEOS_INCLUDE_DIR}
+-  ${QCA_INCLUDE_DIR}
+-  ${QTKEYCHAIN_INCLUDE_DIR}
+-  ${SQLITE3_INCLUDE_DIR}
+-  )
+-
+-IF(HAVE_OPENCL)
+-    INCLUDE_DIRECTORIES(SYSTEM ${OpenCL_INCLUDE_DIRS})
+-ENDIF(HAVE_OPENCL)
+ 
+ #note for tests we should not include the moc of our
+ #qtests in the executable file list as the moc is
+@@ -59,13 +46,13 @@ MACRO (ADD_QGIS_TEST TESTSRC)
+   ADD_EXECUTABLE(${TESTNAME} ${TESTSRC} ${util_SRCS})
+   SET_TARGET_PROPERTIES(${TESTNAME} PROPERTIES AUTOMOC TRUE)
+   TARGET_LINK_LIBRARIES(${TESTNAME}
+-    ${Qt5Core_LIBRARIES}
+-    ${Qt5Xml_LIBRARIES}
+-    ${Qt5Svg_LIBRARIES}
+-    ${Qt5Test_LIBRARIES}
+-    ${PROJ_LIBRARY}
+-    ${GEOS_LIBRARY}
+-    ${GDAL_LIBRARY}
++    Qt5::Core
++    Qt5::Xml
++    Qt5::Svg
++    Qt5::Test
++    PROJ::proj
++    GEOS::geos
++    GDAL::GDAL
+     qgis_core)
+   ADD_TEST(${TESTNAME} ${CMAKE_BINARY_DIR}/output/bin/${TESTNAME} -maxwarnings 10000)
+ ENDMACRO (ADD_QGIS_TEST)
+diff --git a/tests/src/gui/CMakeLists.txt b/tests/src/gui/CMakeLists.txt
+index 21c5bd009a..e5c6d44165 100644
+--- a/tests/src/gui/CMakeLists.txt
++++ b/tests/src/gui/CMakeLists.txt
+@@ -38,15 +38,6 @@ INCLUDE_DIRECTORIES(${CMAKE_CURRENT_SOURCE_DIR}
+   ${CMAKE_BINARY_DIR}/src/native
+   ${CMAKE_CURRENT_BINARY_DIR}
+ )
+-INCLUDE_DIRECTORIES(SYSTEM
+-  ${QT_INCLUDE_DIR}
+-  ${GDAL_INCLUDE_DIR}
+-  ${SQLITE3_INCLUDE_DIR}
+-  ${QWT_INCLUDE_DIR}
+-  ${QCA_INCLUDE_DIR}
+-  ${QTKEYCHAIN_INCLUDE_DIR}
+-  ${QSCINTILLA_INCLUDE_DIR}
+-)
+ 
+ IF(ENABLE_MODELTEST)
+   INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/tests/qt_modeltest)
+@@ -89,16 +80,6 @@ MACRO (ADD_QGIS_TEST testname testsrc)
+   SET_TARGET_PROPERTIES(qgis_${testname} PROPERTIES AUTOMOC TRUE)
+   SET_TARGET_PROPERTIES(qgis_${testname} PROPERTIES AUTORCC TRUE)
+   TARGET_LINK_LIBRARIES(qgis_${testname}
+-    ${Qt5Xml_LIBRARIES}
+-    ${Qt5Core_LIBRARIES}
+-    ${Qt5Svg_LIBRARIES}
+-    ${Qt5Network_LIBRARIES}
+-    ${Qt5Test_LIBRARIES}
+-    ${OPTIONAL_QTWEBKIT}
+-    ${PROJ_LIBRARY}
+-    ${GEOS_LIBRARY}
+-    ${GDAL_LIBRARY}
+-    ${QWT_LIBRARY}
+     qgis_analysis
+     qgis_core
+     qgis_gui)
+diff --git a/tests/src/providers/CMakeLists.txt b/tests/src/providers/CMakeLists.txt
+index dc2ce401af..6254515eb3 100644
+--- a/tests/src/providers/CMakeLists.txt
++++ b/tests/src/providers/CMakeLists.txt
+@@ -23,15 +23,6 @@ INCLUDE_DIRECTORIES(${CMAKE_CURRENT_SOURCE_DIR}
+   ${CMAKE_BINARY_DIR}/src/core
+   ${CMAKE_SOURCE_DIR}/external
+ )
+-INCLUDE_DIRECTORIES(SYSTEM
+-  ${QT_INCLUDE_DIR}
+-  ${GDAL_INCLUDE_DIR}
+-  ${GEOS_INCLUDE_DIR}
+-  ${MDAL_INCLUDE_DIR}
+-  ${QCA_INCLUDE_DIR}
+-  ${QTKEYCHAIN_INCLUDE_DIR}
+-  ${POSTGRES_INCLUDE_DIR}
+-)
+ 
+ #note for tests we should not include the moc of our
+ #qtests in the executable file list as the moc is
+@@ -48,13 +39,13 @@ MACRO (ADD_QGIS_TEST testname testsrc)
+   ADD_EXECUTABLE(qgis_${testname} ${qgis_${testname}_SRCS})
+   SET_TARGET_PROPERTIES(qgis_${testname} PROPERTIES AUTOMOC TRUE)
+   TARGET_LINK_LIBRARIES(qgis_${testname}
+-    ${Qt5Xml_LIBRARIES}
+-    ${Qt5Core_LIBRARIES}
+-    ${Qt5Svg_LIBRARIES}
+-    ${Qt5Test_LIBRARIES}
+-    ${PROJ_LIBRARY}
+-    ${GEOS_LIBRARY}
+-    ${GDAL_LIBRARY}
++    Qt5::Core
++    Qt5::Xml
++    Qt5::Svg
++    Qt5::Test
++    PROJ::proj
++    GEOS::geos
++    GDAL::GDAL
+     qgis_core)
+   ADD_TEST(qgis_${testname} ${CMAKE_CURRENT_BINARY_DIR}/../../../output/bin/qgis_${testname} -maxwarnings 10000)
+ ENDMACRO (ADD_QGIS_TEST)
+diff --git a/tests/src/providers/grass/CMakeLists.txt b/tests/src/providers/grass/CMakeLists.txt
+index ff4e3e648c..c9702bb5a8 100644
+--- a/tests/src/providers/grass/CMakeLists.txt
++++ b/tests/src/providers/grass/CMakeLists.txt
+@@ -1,13 +1,6 @@
+ INCLUDE_DIRECTORIES(
+   ${CMAKE_SOURCE_DIR}/src/providers/grass
+ )
+-INCLUDE_DIRECTORIES(SYSTEM
+-  ${GDAL_INCLUDE_DIR}
+-  ${GEOS_INCLUDE_DIR}
+-  ${POSTGRES_INCLUDE_DIR}
+-  ${PROJ_INCLUDE_DIR}
+-)
+-
+ 
+ MACRO (ADD_QGIS_GRASS_TEST grass_build_version testname testsrc)
+   SET(qgis_${testname}${grass_build_version}_SRCS ${testsrc} ${util_SRCS})
+@@ -23,13 +16,6 @@ MACRO (ADD_QGIS_GRASS_TEST grass_build_version testname testsrc)
+     COMPILE_FLAGS "-DGRASS_BASE=\\\"${GRASS_PREFIX${grass_build_version}}\\\" \"-DGRASS_BUILD_VERSION=${grass_build_version}\""
+   )
+   TARGET_LINK_LIBRARIES(qgis_${testname}${grass_build_version}
+-    ${Qt5Xml_LIBRARIES}
+-    ${Qt5Core_LIBRARIES}
+-    ${Qt5Svg_LIBRARIES}
+-    ${Qt5Test_LIBRARIES}
+-    ${PROJ_LIBRARY}
+-    ${GEOS_LIBRARY}
+-    ${GDAL_LIBRARY}
+     qgis_core
+     qgisgrass${grass_build_version}
+   )
+diff --git a/tests/src/quickgui/CMakeLists.txt b/tests/src/quickgui/CMakeLists.txt
+index 6e374e8532..51929d7435 100644
+--- a/tests/src/quickgui/CMakeLists.txt
++++ b/tests/src/quickgui/CMakeLists.txt
+@@ -35,19 +35,6 @@ INCLUDE_DIRECTORIES(
+ 
+ )
+ 
+-INCLUDE_DIRECTORIES(SYSTEM
+-    ${LIBZIP_INCLUDE_DIRS}
+-    ${SPATIALINDEX_INCLUDE_DIR}
+-    ${PROJ_INCLUDE_DIR}
+-    ${GEOS_INCLUDE_DIR}
+-    ${GDAL_INCLUDE_DIR}
+-    ${EXPAT_INCLUDE_DIR}
+-    ${SQLITE3_INCLUDE_DIR}
+-    ${SPATIALITE_INCLUDE_DIR}
+-    ${QCA_INCLUDE_DIR}
+-    ${QTKEYCHAIN_INCLUDE_DIR}
+-)
+-
+ #note for tests we should not include the moc of our
+ #qtests in the executable file list as the moc is
+ #directly included in the sources
+@@ -63,14 +50,6 @@ MACRO (ADD_QGIS_TEST testname testsrc)
+   ADD_EXECUTABLE(qgis_${testname} ${qgis_${testname}_SRCS})
+   SET_TARGET_PROPERTIES(qgis_${testname} PROPERTIES AUTOMOC TRUE)
+   TARGET_LINK_LIBRARIES(qgis_${testname}
+-    ${Qt5Xml_LIBRARIES}
+-    ${Qt5Core_LIBRARIES}
+-    ${Qt5Svg_LIBRARIES}
+-    ${Qt5Test_LIBRARIES}
+-    Qt5::Gui
+-    Qt5::Qml
+-    Qt5::Quick
+-    Qt5::Xml
+     qgis_core
+     qgis_quick)
+ 
+diff --git a/tests/src/quickgui/app/CMakeLists.txt b/tests/src/quickgui/app/CMakeLists.txt
+index 6006eb8ae0..a41a5ed211 100644
+--- a/tests/src/quickgui/app/CMakeLists.txt
++++ b/tests/src/quickgui/app/CMakeLists.txt
+@@ -39,19 +39,6 @@ INCLUDE_DIRECTORIES(
+   ${CMAKE_BINARY_DIR}/src/quickgui
+ )
+ 
+-INCLUDE_DIRECTORIES(SYSTEM
+-  ${LIBZIP_INCLUDE_DIRS}
+-  ${SPATIALINDEX_INCLUDE_DIR}
+-  ${PROJ_INCLUDE_DIR}
+-  ${GEOS_INCLUDE_DIR}
+-  ${GDAL_INCLUDE_DIR}
+-  ${EXPAT_INCLUDE_DIR}
+-  ${SQLITE3_INCLUDE_DIR}
+-  ${SPATIALITE_INCLUDE_DIR}
+-  ${QCA_INCLUDE_DIR}
+-  ${QTKEYCHAIN_INCLUDE_DIR}
+-)
+-
+ QT5_WRAP_CPP(QGIS_QUICK_APP_MOC_SRCS ${QGIS_QUICK_APP_MOC_HDRS})
+ QT5_ADD_RESOURCES(QGIS_QUICK_APP_RESOURCES qml.qrc)
+ SET(QGIS_QUICK_APP_NAME qgis_quickapp)
+@@ -62,7 +49,10 @@ ADD_EXECUTABLE(${QGIS_QUICK_APP_NAME}
+     ${QGIS_QUICK_APP_MOC_SRCS}
+ )
+ 
+-TARGET_LINK_LIBRARIES(${QGIS_QUICK_APP_NAME} Qt5::Gui Qt5::Qml Qt5::Quick Qt5::Xml qgis_core qgis_quick)
++TARGET_LINK_LIBRARIES(${QGIS_QUICK_APP_NAME}
++    qgis_core
++    qgis_quick
++)
+ SET_TARGET_PROPERTIES(${QGIS_QUICK_APP_NAME} PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
+ TARGET_COMPILE_DEFINITIONS(${QGIS_QUICK_APP_NAME} PRIVATE "-DQT_NO_FOREACH")
+ ADD_DEPENDENCIES(${QGIS_QUICK_APP_NAME}
