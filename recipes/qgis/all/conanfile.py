@@ -67,6 +67,7 @@ class QGISConan(ConanFile):
         cmake_layout(self, src_folder="src")
 
     def requirements(self):
+        self.requires("draco/1.5.6")
         self.requires("exiv2/0.27.5")
         self.requires("expat/2.5.0")
         self.requires("geos/3.11.2")
@@ -136,6 +137,7 @@ class QGISConan(ConanFile):
 
     def generate(self):
         tc = CMakeToolchain(self)
+        tc.variables["ENABLE_TESTS"] = False
         tc.variables["BUILD_TESTING"] = False
         tc.variables["BUILD_WITH_QT6"] = self.options.build_with_qt6
         tc.variables["WITH_DESKTOP"] = False
