@@ -1,0 +1,21 @@
+diff -Naur a/CMakeLists.txt b/CMakeLists.txt
+--- a/CMakeLists.txt	2023-11-28 00:12:30.000000000 +0000
++++ b/CMakeLists.txt	2024-02-02 09:08:14.276558690 +0000
+@@ -385,7 +385,7 @@
+   )
+ endif()
+ # Setup external proto library at third_party/opencensus-proto/src with 2 download URLs
+-if (NOT EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/third_party/opencensus-proto/src)
++if (NOT EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/third_party/opencensus-proto)
+   # Download the archive via HTTP, validate the checksum, and extract to third_party/opencensus-proto/src.
+   download_archive(
+     ${CMAKE_CURRENT_SOURCE_DIR}/third_party/opencensus-proto/src
+@@ -394,7 +394,7 @@
+     opencensus-proto-0.3.0/src
+   )
+ endif()
+-if (NOT EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/third_party/opencensus-proto/src)
++if (NOT EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/third_party/opencensus-proto)
+   # Download the archive via HTTP, validate the checksum, and extract to third_party/opencensus-proto/src.
+   download_archive(
+     ${CMAKE_CURRENT_SOURCE_DIR}/third_party/opencensus-proto/src

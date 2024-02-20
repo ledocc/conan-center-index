@@ -1,4 +1,7 @@
 sources:
+  "1.60.0":
+    url: "https://github.com/grpc/grpc/archive/v1.60.0.tar.gz"
+    sha256: "437068b8b777d3b339da94d3498f1dc20642ac9bfa76db43abdd522186b1542b"
   "1.54.3":
     url: "https://github.com/grpc/grpc/archive/v1.54.3.tar.gz"
     sha256: "17e4e1b100657b88027721220cbfb694d86c4b807e9257eaf2fb2d273b41b1b1"
@@ -12,6 +15,8 @@ sources:
     url: "https://github.com/grpc/grpc/archive/v1.48.4.tar.gz"
     sha256: "0c3faa83e39d4f1ab55fe1476362b9ac3b81632a46dce7fd4d50271bce816b53"
 patches:
+  "1.60.0":
+    - patch_file: "patches/v1.60.x/001-disable-download-opencensus-proto.patch"
   "1.50.1":
     - patch_file: "patches/v1.50.x/001-disable-cppstd-override.patch"
   "1.50.0":

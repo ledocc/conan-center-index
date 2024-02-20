@@ -94,12 +94,17 @@ class GrpcConan(ConanFile):
                 self.requires("abseil/20211102.0", transitive_headers=True, transitive_libs=True)
             else:
                 self.requires("abseil/20220623.1", transitive_headers=True, transitive_libs=True)
-        else:
+        elif Version(self.version) < "1.60":
             self.requires("abseil/20230125.3", transitive_headers=True, transitive_libs=True)
+        else:
+            self.requires("abseil/20230802.1", transitive_headers=True, transitive_libs=True)
         self.requires("c-ares/1.19.1")
         self.requires("openssl/[>=1.1 <4]")
-        self.requires("protobuf/3.21.12", transitive_headers=True, transitive_libs=True)
-        self.requires("re2/20230301")
+        if Version(self.version) < "1.60":
+            self.requires("protobuf/3.21.12", transitive_headers=True, transitive_libs=True)
+        else:
+            self.requires("protobuf/4.25.2", transitive_headers=True, transitive_libs=True)
+        self.requires("re2/20231101")
         self.requires("zlib/[>=1.2.11 <2]")
         if self.settings.os in ["Linux", "FreeBSD"] and Version(self.version) >= "1.52":
             self.requires("libsystemd/255")
@@ -125,7 +130,7 @@ class GrpcConan(ConanFile):
             )
 
     def build_requirements(self):
-        if not self._is_legacy_one_profile:
+        if not self._is_legacy_one_profile and cross_building(self):
             self.tool_requires("protobuf/<host_version>")
         if cross_building(self):
             # when cross compiling we need pre compiled grpc plugins for protoc
@@ -136,9 +141,9 @@ class GrpcConan(ConanFile):
 
     def generate(self):
         # Set up environment so that we can run grpc-cpp-plugin at build time
-        VirtualBuildEnv(self).generate()
-        if self._is_legacy_one_profile:
+        if not cross_building(self):
             VirtualRunEnv(self).generate(scope="build")
+        VirtualBuildEnv(self).generate()
 
         # This doesn't work yet as one would expect, because the install target builds everything
         # and we need the install target because of the generated CMake files
