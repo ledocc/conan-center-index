@@ -1,3 +1,4 @@
+from conans import RunEnvironment, tools
 from conan import ConanFile
 from conan.tools.build import can_run
 from conan.tools.cmake import cmake_layout, CMake, CMakeToolchain
@@ -24,9 +25,11 @@ class TestPackageConan(ConanFile):
         tc.generate()
 
     def build(self):
-        cmake = CMake(self)
-        cmake.configure()
-        cmake.build()
+        env_build = RunEnvironment(self)
+        with tools.environment_append(env_build.vars):
+            cmake = CMake(self)
+            cmake.configure()
+            cmake.build()
 
     def test(self):
         if can_run(self):
