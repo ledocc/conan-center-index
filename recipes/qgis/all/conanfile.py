@@ -101,7 +101,7 @@ class QGISConan(ConanFile):
         self.options["qt"].qtsvg=True
         self.options["qt"].with_dbus=True
         if self.options.with_qtquick:
-            self.options["qt"].with_qtquick=True
+            self.options["qt"].qtquick=True
         self.requires("qca/2.3.6")
         self.options["qca"].build_with_qt6=self.options.build_with_qt6
         self.requires("qscintilla/2.14.1")
