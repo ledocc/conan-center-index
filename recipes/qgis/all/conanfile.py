@@ -62,6 +62,22 @@ class QGISConan(ConanFile):
     def configure(self):
         if self.options.shared:
             self.options.rm_safe("fPIC")
+        self.options["protobuf"].lite=True
+        self.options["qt"].gui=True
+        self.options["qt"].widgets=True
+        self.options["qt"].qt3d=True
+        self.options["qt"].qtdeclarative=True
+        self.options["qt"].qtmultimedia=True
+        if self.options.with_qtserialport:
+            self.options["qt"].qtserialport=True
+        self.options["qt"].qttools=True
+        self.options["qt"].qtsvg=True
+        self.options["qt"].with_dbus=True
+        if self.options.with_qtquick:
+            self.options["qt"].qtquick=True
+        self.options["qca"].build_with_qt6=self.options.build_with_qt6
+        self.options["qscintilla"].build_with_qt6=self.options.build_with_qt6
+        self.options["qtkeychain"].build_with_qt6=self.options.build_with_qt6
 
     def layout(self):
         cmake_layout(self, src_folder="src")
@@ -84,30 +100,14 @@ class QGISConan(ConanFile):
         self.requires("pdal/2.3.0")
         self.requires("proj/9.1.1")
         self.requires("protobuf/3.21.9")
-        self.options["protobuf"].lite=True
 
         if self.options.build_with_qt6:
             self.requires("qt/6.4.2")
         else:
             self.requires("qt/5.15.9")
-        self.options["qt"].gui=True
-        self.options["qt"].widgets=True
-        self.options["qt"].qt3d=True
-        self.options["qt"].qtdeclarative=True
-        self.options["qt"].qtmultimedia=True
-        if self.options.with_qtserialport:
-            self.options["qt"].qtserialport=True
-        self.options["qt"].qttools=True
-        self.options["qt"].qtsvg=True
-        self.options["qt"].with_dbus=True
-        if self.options.with_qtquick:
-            self.options["qt"].qtquick=True
         self.requires("qca/2.3.6")
-        self.options["qca"].build_with_qt6=self.options.build_with_qt6
         self.requires("qscintilla/2.14.1")
-        self.options["qscintilla"].build_with_qt6=self.options.build_with_qt6
         self.requires("qtkeychain/0.14.1")
-        self.options["qtkeychain"].build_with_qt6=self.options.build_with_qt6
         self.requires("qwt/6.2.0")
         self.requires("sqlite3/3.42.0")
         self.requires("zlib/1.2.13")

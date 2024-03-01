@@ -64,7 +64,11 @@ class PackageConan(ConanFile):
     def configure(self):
         if self.options.shared:
             self.options.rm_safe("fPIC")
-
+        if self.settings.os == "Linux":
+            self.options["qt"].with_dbus=True
+        if self.options.build_translation:
+            self.options["qt"].qttranslations=True
+            
     def layout(self):
         # src_folder must use the same source folder name the project
         cmake_layout(self, src_folder="src")
@@ -72,10 +76,6 @@ class PackageConan(ConanFile):
     def requirements(self):
         # prefer self.requires method instead of requires attribute
         self.requires("qt/5.15.9")
-        if self.settings.os == "Linux":
-            self.options["qt"].with_dbus=True
-        if self.options.build_translation:
-            self.options["qt"].qttranslations=True
         self.requires("libsecret/0.20.5")
 
     def validate(self):

@@ -57,6 +57,7 @@ class QScintillaConan(ConanFile):
     def configure(self):
         if self.options.shared:
             self.options.rm_safe("fPIC")
+        self.options["qt"].widgets=True
 
     def layout(self):
         # src_folder must use the same source folder name the project
@@ -68,8 +69,7 @@ class QScintillaConan(ConanFile):
             self.requires("qt/6.5.1")
         else:
             self.requires("qt/5.15.9")
-        self.options["qt"].widgets=True
-
+        
     def validate(self):
         # validate the minimum cpp standard supported. For C++ projects only
         if self.settings.compiler.cppstd:
