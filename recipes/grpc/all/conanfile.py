@@ -36,7 +36,8 @@ class GrpcConan(ConanFile):
         "php_plugin": [True, False],
         "python_plugin": [True, False],
         "ruby_plugin": [True, False],
-        "secure": [True, False]
+        "secure": [True, False],
+        "with_systemd": [True, False]
     }
     default_options = {
         "shared": False,
@@ -51,6 +52,7 @@ class GrpcConan(ConanFile):
         "python_plugin": True,
         "ruby_plugin": True,
         "secure": False,
+        "with_systemd": True
     }
 
     short_paths = True
@@ -106,7 +108,7 @@ class GrpcConan(ConanFile):
             self.requires("protobuf/4.25.2", transitive_headers=True, transitive_libs=True)
         self.requires("re2/20231101")
         self.requires("zlib/[>=1.2.11 <2]")
-        if self.settings.os in ["Linux", "FreeBSD"] and Version(self.version) >= "1.52":
+        if self.options.with_systemd and self.settings.os in ["Linux", "FreeBSD"] and Version(self.version) >= "1.52":
             self.requires("libsystemd/255")
 
     def package_id(self):
@@ -293,7 +295,7 @@ class GrpcConan(ConanFile):
     def _grpc_components(self):
 
         def libsystemd():
-            return ["libsystemd::libsystemd"] if self.settings.os in ["Linux", "FreeBSD"] and Version(self.version) >= "1.52" else []
+            return ["libsystemd::libsystemd"] if self.options.with_systemd and self.settings.os in ["Linux", "FreeBSD"] and Version(self.version) >= "1.52" else []
 
         def libm():
             return ["m"] if self.settings.os in ["Linux", "FreeBSD"] else []
