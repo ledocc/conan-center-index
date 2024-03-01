@@ -71,7 +71,7 @@ class QGISConan(ConanFile):
         self.requires("exiv2/0.27.5")
         self.requires("expat/2.5.0")
         self.requires("geos/3.11.2")
-        self.requires("gdal/3.5.2")
+        self.requires("gdal/3.5.3")
         self.requires("gsl/2.7")
         self.requires("hdf5/1.14.0")
         self.requires("libpq/14.7")
