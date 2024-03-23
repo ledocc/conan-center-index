@@ -87,6 +87,9 @@ class QScintillaConan(ConanFile):
 
     # if another tool than the compiler or CMake is required to build the project (pkgconf, bison, flex etc)
 
+    def build_requirements(self):
+        self.tool_requires("qt/<host_version>")
+
     def source(self):
         get(self, **self.conan_data["sources"][self.version], strip_root=True)
 
@@ -101,7 +104,7 @@ class QScintillaConan(ConanFile):
         tc.generate()
 
         tc = VirtualBuildEnv(self)
-        tc.generate(scope="build")
+        tc.generate()
 
     def build(self):
         apply_conandata_patches(self)
