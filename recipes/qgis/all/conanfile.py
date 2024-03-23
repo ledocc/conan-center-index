@@ -107,7 +107,7 @@ class QGISConan(ConanFile):
             self.requires("qt/5.15.9")
         self.requires("qca/2.3.6")
         self.requires("qscintilla/2.14.1")
-        self.requires("qtkeychain/0.14.1")
+        self.requires("qtkeychain/0.14.2")
         self.requires("qwt/6.2.0")
         self.requires("sqlite3/3.42.0")
         self.requires("zlib/1.2.13")
