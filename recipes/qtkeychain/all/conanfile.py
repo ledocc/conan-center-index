@@ -68,6 +68,10 @@ class PackageConan(ConanFile):
             self.options["qt"].with_dbus=True
         if self.options.build_translation:
             self.options["qt"].qttranslations=True
+        self.options["qt"].qttranslations=True
+        if self.options.build_with_qt6:
+            self.options["qt"].qt5compat=True
+        
             
     def layout(self):
         # src_folder must use the same source folder name the project
@@ -75,7 +79,10 @@ class PackageConan(ConanFile):
 
     def requirements(self):
         # prefer self.requires method instead of requires attribute
-        self.requires("qt/5.15.9")
+        if self.options.build_with_qt6:
+            self.requires("qt/6.4.2")
+        else:
+            self.requires("qt/5.15.9")
         self.requires("libsecret/0.20.5")
 
     def validate(self):
@@ -94,7 +101,7 @@ class PackageConan(ConanFile):
             raise ConanInvalidConfiguration(f"{self.ref} can not be built as shared on Visual Studio and msvc.")
 
     def build_requirements(self):
-        pass
+        self.tool_requires("qt/<host_version>")
 
     def source(self):
         get(self, **self.conan_data["sources"][self.version], strip_root=True)
