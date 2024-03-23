@@ -972,7 +972,10 @@ class QtConan(ConanFile):
             reqs = []
             for r in requires:
                 if "::" in r:
-                    corrected_req = r
+                    if not self.options.shared :
+                        corrected_req = r
+                    else:
+                        continue
                 else:
                     corrected_req = f"qt{r}"
                     assert corrected_req in self.cpp_info.components, f"{corrected_req} required but not yet present in self.cpp_info.components"
