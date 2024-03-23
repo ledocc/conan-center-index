@@ -71,6 +71,7 @@ class QtConan(ConanFile):
         "gui": [True, False],
         "widgets": [True, False],
 
+        "ccache": [True, False],
         "device": [None, "ANY"],
         "cross_compile": [None, "ANY"],
         "sysroot": [None, "ANY"],
@@ -116,6 +117,7 @@ class QtConan(ConanFile):
         "gui": True,
         "widgets": True,
 
+        "ccache": False,
         "device": None,
         "cross_compile": None,
         "sysroot": None,
@@ -591,6 +593,8 @@ class QtConan(ConanFile):
         if self.options.sysroot:
             tc.variables["CMAKE_SYSROOT"] = self.options.sysroot
 
+        tc.variables["QT_USE_CCACHE"] = self.options.get_safe("ccache", "OFF")
+
         if self.options.device:
             tc.variables["QT_QMAKE_TARGET_MKSPEC"] = f"devices/{self.options.device}"
         else:
@@ -634,6 +638,7 @@ class QtConan(ConanFile):
         tc.generate()
 
     def package_id(self):
+        del self.info.options.ccache
         del self.info.options.cross_compile
         del self.info.options.sysroot
         if self.info.options.multiconfiguration:
