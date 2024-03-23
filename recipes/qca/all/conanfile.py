@@ -60,6 +60,8 @@ class QcaConan(ConanFile):
     def configure(self):
         if self.options.shared:
             self.options.rm_safe("fPIC")
+        if self.options.build_with_qt6:
+            self.options["qt"].qt5compat = True
 
     def layout(self):
         cmake_layout(self, src_folder="src")
@@ -67,7 +69,6 @@ class QcaConan(ConanFile):
     def requirements(self):
         if self.options.build_with_qt6:
             self.requires("qt/6.4.2@")
-            self.options["qt"].qt5compat = True
         else:
             self.requires("qt/5.15.9@")
 
@@ -88,7 +89,7 @@ class QcaConan(ConanFile):
             )
 
     def build_requirements(self):
-        pass
+        self.tool_requires("qt/<host_version>")
 
     def source(self):
         get(self, **self.conan_data["sources"][self.version], strip_root=True)
@@ -102,6 +103,9 @@ class QcaConan(ConanFile):
 
         tc = CMakeDeps(self)
         tc.generate()
+
+        vbe = VirtualBuildEnv(self)
+        vbe.generate()
 
     def build(self):
         apply_conandata_patches(self)
