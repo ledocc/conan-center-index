@@ -39,3 +39,5 @@ patches:
     - patch_file: "patches/3.5.3/2-allow-cycles-in-cmake-targets.patch"
       patch_description: "Fix CMake failure due to cyclical dependencies in CMakeDeps targets"
       patch_type: "conan"
+    - patch_file: "patches/3.5.3/3-support-build-gcc-13.patch"
+

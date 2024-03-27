@@ -1,0 +1,11 @@
+diff --color -Naur a/frmts/mrf/LERCV1/Lerc1Image.cpp b/frmts/mrf/LERCV1/Lerc1Image.cpp
+--- a/frmts/mrf/LERCV1/Lerc1Image.cpp	2024-03-26 21:05:17.472701925 +0100
++++ b/frmts/mrf/LERCV1/Lerc1Image.cpp	2024-03-26 20:58:38.600248840 +0100
+@@ -26,6 +26,7 @@
+ #include <cfloat>
+ #include <string>
+ #include <algorithm>
++#include <cstdint>
+ 
+ NAMESPACE_LERC1_START
+ 
