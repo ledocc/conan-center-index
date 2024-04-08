@@ -1,0 +1,16 @@
+diff --color -Naur a/src/qwt_series_store.h b/src/qwt_series_store.h
+--- a/src/qwt_series_store.h	2023-11-11 17:43:30.953843921 +0100
++++ b/src/qwt_series_store.h	2024-04-01 00:51:02.679072303 +0200
+@@ -69,10 +69,10 @@
+       \brief Constructor
+       The store contains no series
+     */
+-    explicit QwtSeriesStore<T>();
++    explicit QwtSeriesStore();
+ 
+     //! Destructor
+-    ~QwtSeriesStore<T>();
++    ~QwtSeriesStore();
+ 
+     /*!
+       Assign a series of samples

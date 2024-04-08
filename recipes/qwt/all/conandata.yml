@@ -12,4 +12,5 @@ patches:
     - patch_file: "patches/cmake-support-patch.patch"
   "6.1.6":
     - patch_file: "patches/cmake-support-6.1.6.patch"
+    - patch_file: "patches/gcc-13-support-6.1.6.patch"
 
