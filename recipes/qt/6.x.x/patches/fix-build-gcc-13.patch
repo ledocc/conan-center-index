@@ -1,0 +1,10 @@
+--- a/src/3rdparty/assimp/src/code/AssetLib/FBX/FBXBinaryTokenizer.cpp	2023-09-24 11:38:48.000000000 +0000
++++ b/src/3rdparty/assimp/src/code/AssetLib/FBX/FBXBinaryTokenizer.cpp	2024-04-01 13:45:15.246326080 +0000
+@@ -55,6 +55,7 @@
+ #include <assimp/ByteSwapper.h>
+ #include <assimp/DefaultLogger.hpp>
+ #include <assimp/StringUtils.h>
++#include <cstdint>
+ 
+ namespace Assimp {
+ namespace FBX {

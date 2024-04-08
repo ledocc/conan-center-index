@@ -189,6 +189,10 @@ patches:
       "patch_file": "patches/fix-long-path-on-windows_6.5.3.patch"
       "patch_type": "bugfix"
       "patch_source": "https://code.qt.io/cgit/qt/qtbase.git/commit/?id=b4246a5c28472de3c4b6a85a3daf4a1d578894ab"
+    - "base_path": "qt3d"
+      "patch_description": "Fix build assimp with gcc 13"
+      "patch_file": "patches/fix-build-gcc-13.patch"
+      "patch_type": "bugfix"
   "6.4.2":
     - base_path: "qtbase/cmake"
       patch_description: "Fix pri helpers"
