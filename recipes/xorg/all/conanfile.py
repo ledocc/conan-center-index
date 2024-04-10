@@ -16,14 +16,6 @@ class XorgConan(ConanFile):
     settings = "os", "arch", "compiler", "build_type"
     topics = ("x11", "xorg")
 
-    options = {
-        "install_xcb_cursor": [True, False]
-    }
-    default_options = {
-        "install_xcb_cursor": True
-    }
-
-
     def validate(self):
         if self.settings.os not in ["Linux", "FreeBSD"]:
             raise ConanInvalidConfiguration("This recipe supports only Linux and FreeBSD")
@@ -53,10 +45,8 @@ class XorgConan(ConanFile):
                            "libXvMC-devel",
                            "xcb-util-wm-devel", "xcb-util-image-devel", "xcb-util-keysyms-devel",
                            "xcb-util-renderutil-devel", "libXdamage-devel", "libXxf86vm-devel", "libXv-devel",
-                           "xcb-util-devel", "libuuid-devel"], update=True, check=True)
-        if (self.options.install_xcb_cursor):
-            yum.install(["xcb-util-cursor-devel"], update=True, check=True)
-        
+                           "xcb-util-devel", "libuuid-devel", "xcb-util-cursor-devel"], update=True, check=True)
+
         dnf = package_manager.Dnf(self)
         dnf.install(["libxcb-devel", "libfontenc-devel", "libXaw-devel", "libXcomposite-devel",
                            "libXcursor-devel", "libXdmcp-devel", "libXtst-devel", "libXinerama-devel",
@@ -99,7 +89,6 @@ class XorgConan(ConanFile):
                      "xcb-xinerama", "xcb", "xcb-atom", "xcb-aux", "xcb-event", "xcb-util",
                      "xcb-dri3", "xcb-cursor", "xcb-dri2", "xcb-dri3", "xcb-glx", "xcb-present",
                      "xcb-composite", "xcb-ewmh", "xcb-res"] + ([] if self.settings.os == "FreeBSD" else ["uuid"]):
-
             pkg_config = PkgConfig(self, name)
             pkg_config.fill_cpp_info(
                 self.cpp_info.components[name], is_system=self.settings.os != "FreeBSD")
