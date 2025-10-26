@@ -2,6 +2,7 @@ from conan import ConanFile, conan_version
 from conan.tools.cmake import CMake, CMakeToolchain, cmake_layout
 from conan.tools.files import copy, get, replace_in_file
 from conan.tools.scm import Version
+from conan.tools.system import package_manager
 import os
 
 required_conan_version = ">=1.52.0"
@@ -17,8 +18,19 @@ class NinjaConan(ConanFile):
     topics = ("ninja", "build")
     settings = "os", "arch", "compiler", "build_type"
 
+    def _static_link(self):
+        return self.settings.os == "Linux" and self.settings.compiler.libcxx in ["libstdc++", "libstdc++11"]
+
+
     def layout(self):
         cmake_layout(self, src_folder="src")
+
+    def system_requirements(self):
+        if self._static_link():
+            yum = package_manager.Yum(self)
+            yum.install(["libstdc++-static"], update=True, check=True)
+            dnf = package_manager.Dnf(self)
+            dnf.install(["libstdc++-static"], update=True, check=True)
 
     def package_id(self):
         del self.info.settings.compiler
@@ -33,7 +45,7 @@ class NinjaConan(ConanFile):
     def generate(self):
         tc = CMakeToolchain(self)
         tc.variables["BUILD_TESTING"] = False
-        if self.settings.os == "Linux" and "libstdc++" in self.settings.compiler.libcxx:
+        if self._static_link():
             # Link C++ library statically on Linux so that it can run on systems
             # with an older C++ runtime
             tc.cache_variables["CMAKE_EXE_LINKER_FLAGS"] = "-static-libstdc++ -static-libgcc"
