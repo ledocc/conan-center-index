@@ -6,6 +6,7 @@ from conan.tools.files import apply_conandata_patches, copy, export_conandata_pa
 from conan.tools.gnu import Autotools, AutotoolsToolchain
 from conan.tools.layout import basic_layout
 from conan.tools.scm import Version
+from conan.tools.system import package_manager
 
 required_conan_version = ">=2.0"
 
@@ -36,7 +37,8 @@ class AutomakeConan(ConanFile):
 
     def requirements(self):
         self.requires("autoconf/2.71")
-        # automake requires perl-Thread-Queue package
+        if self.settings_build.os == "Linux":
+            self.requires("perl/system")
 
     def package_id(self):
         del self.info.settings.arch

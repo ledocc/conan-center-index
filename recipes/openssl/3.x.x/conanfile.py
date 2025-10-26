@@ -7,6 +7,7 @@ from conan.tools.gnu import AutotoolsToolchain
 from conan.tools.layout import basic_layout
 from conan.tools.microsoft import is_msvc, msvc_runtime_flag, unix_path
 from conan.tools.scm import Version
+from conan.tools.system import package_manager
 
 import fnmatch
 import os
@@ -145,6 +146,8 @@ class OpenSSLConan(ConanFile):
                 self.win_bash = True
                 if not self.conf.get("tools.microsoft.bash:path", check_type=str):
                     self.tool_requires("msys2/cci.latest")
+        elif self.settings_build.os == "Linux":
+            self.tool_requires("perl/system")
 
     def source(self):
         get(self, **self.conan_data["sources"][self.version], strip_root=True)

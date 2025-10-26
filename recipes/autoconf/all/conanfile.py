@@ -36,6 +36,8 @@ class AutoconfConan(ConanFile):
 
     def requirements(self):
         self.requires("m4/1.4.19") # Needed at runtime by downstream clients as well
+        if self.settings_build.os == "Linux":
+            self.requires("perl/system")
 
     def package_id(self):
         del self.info.settings.arch
