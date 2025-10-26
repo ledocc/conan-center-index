@@ -377,7 +377,7 @@ class Libxml2Conan(ConanFile):
         # FIXME: Provide LibXml2::xmllint & LibXml2::xmlcatalog imported target for executables
         self.cpp_info.set_property("cmake_find_mode", "both")
         self.cpp_info.set_property("cmake_module_file_name", "LibXml2")
-        self.cpp_info.set_property("cmake_file_name", "libxml2")
+        self.cpp_info.set_property("cmake_file_name", "libXml2")
         self.cpp_info.set_property("cmake_target_name", "LibXml2::LibXml2")
         self.cpp_info.set_property("cmake_build_modules", [self._module_file_rel_path])
         self.cpp_info.set_property("pkg_config_name", "libxml-2.0")
